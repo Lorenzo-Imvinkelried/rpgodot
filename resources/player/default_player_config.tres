@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PlayerConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player_config.gd" id="1_config"]
+
+[resource]
+script = ExtResource("1_config")
+forward_speed = 4.0
+backward_speed = 3.1
+turn_speed = 3.2
+deceleration_factor = 4.0
+gravity_multiplier = 1.0

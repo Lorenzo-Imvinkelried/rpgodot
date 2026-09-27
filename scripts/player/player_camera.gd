@@ -38,19 +38,35 @@ func _exit_tree() -> void:
 	if camera.current:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
+const TargetDetectorScript = preload("res://scripts/combat/target_detector.gd")
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not camera.current:
 		return
 
-	# Mantener Click Derecho para girar la cámara orbitalmente (cursor siempre visible)
+	# Click Derecho: Seleccionar objetivo atacable o rotar la cámara orbitalmente
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
-			is_rmb_held = event.pressed
-			# Al soltar el click derecho mientras camina, apuntar hacia donde mira el player
-			if not is_rmb_held:
+			if event.pressed:
 				var parent_node := get_parent() as Node3D
-				if parent_node and (("is_moving" in parent_node and parent_node.is_moving) or Input.is_action_pressed("move_forward") or Input.is_key_pressed(KEY_W)):
-					snap_behind_player()
+				var exclude: Array[RID] = []
+				if parent_node is CollisionObject3D:
+					exclude.append((parent_node as CollisionObject3D).get_rid())
+
+				var hit_target := TargetDetectorScript.find_target_at_screen_pos(camera, event.position, exclude)
+				if hit_target != null and parent_node and parent_node.has_method("set_combat_target"):
+					parent_node.set_combat_target(hit_target)
+					is_rmb_held = false
+					return
+				is_rmb_held = true
+			else:
+				var was_orbiting := is_rmb_held
+				is_rmb_held = false
+				# Al soltar el click derecho tras orbitar manualmente la cámara caminando con W
+				if was_orbiting:
+					var parent_node := get_parent() as Node3D
+					if parent_node and (Input.is_action_pressed("move_forward") or Input.is_key_pressed(KEY_W)):
+						snap_behind_player()
 
 		# Zoom con la ruedita del mouse
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:

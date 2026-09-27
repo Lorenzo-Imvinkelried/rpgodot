@@ -1,9 +1,12 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
+[ext_resource type="Resource" path="res://resources/player/default_player_config.tres" id="2_config"]
 [ext_resource type="Script" path="res://scripts/player/player_visuals.gd" id="2_visuals"]
 [ext_resource type="Script" path="res://scripts/player/player_camera.gd" id="3_camera"]
-[ext_resource type="PackedScene" path="res://assets/models/characters/xbot/xbot.glb" id="4_model"]
+[ext_resource type="PackedScene" path="res://scenes/characters/maria.tscn" id="4_model"]
+[ext_resource type="Script" path="res://scripts/combat/combat_controller.gd" id="5_combat_ctrl"]
+[ext_resource type="Script" path="res://scripts/combat/combat_target.gd" id="6_combat_tgt"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.4
@@ -22,6 +25,7 @@ properties/2/replication_mode = 2
 
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_player")
+config = ExtResource("2_config")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
@@ -49,3 +53,11 @@ script = ExtResource("3_camera")
 spring_length = 5.5
 
 [node name="Camera3D" type="Camera3D" parent="CameraPivot/SpringArm3D"]
+
+[node name="CombatController" type="Node" parent="."]
+script = ExtResource("5_combat_ctrl")
+
+[node name="CombatTarget" type="Node" parent="."]
+script = ExtResource("6_combat_tgt")
+target_name = "Player"
+

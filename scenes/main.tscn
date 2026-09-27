@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/network/network_manager.gd" id="2_network"]
 [ext_resource type="PackedScene" path="res://scenes/ui/connection_menu.tscn" id="3_menu"]
 [ext_resource type="PackedScene" path="res://scenes/ui/game_hud.tscn" id="4_hud"]
+[ext_resource type="PackedScene" path="res://scenes/combat/training_dummy.tscn" id="5_dummy"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 sky_top_color = Color(0.35, 0.55, 0.85, 1)
@@ -80,6 +81,12 @@ shape = SubResource("BoxShape3D_pillar")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Pillar2"]
 mesh = SubResource("BoxMesh_pillar")
+
+[node name="TrainingDummy1" parent="." instance=ExtResource("5_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 3)
+
+[node name="TrainingDummy2" parent="." instance=ExtResource("5_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 3)
 
 [node name="Players" type="Node3D" parent="."]
 
