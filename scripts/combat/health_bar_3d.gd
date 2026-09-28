@@ -1,0 +1,141 @@
+class_name HealthBar3D
+extends Node3D
+
+## Responsabilidad: Barra de vida y estado sobre la cabeza de entidades atacables (jugadores, muñecos, enemigos).
+## Muestra nombre, barra de vida y texto de puntos de salud de manera aislada por entidad.
+
+const COLOR_HEALTH_HIGH := Color(0.18, 0.82, 0.42, 1.0)
+const COLOR_HEALTH_MID := Color(0.96, 0.65, 0.15, 1.0)
+const COLOR_HEALTH_LOW := Color(0.92, 0.26, 0.26, 1.0)
+
+@export var height_offset: float = 2.15
+@export var auto_bind_combat_target: bool = true
+@export var combat_target: CombatTarget = null
+@export var auto_hide_when_full: bool = false
+@export var use_dynamic_health_color: bool = true
+
+@onready var sub_viewport: SubViewport = $SubViewport
+@onready var sprite_3d: Sprite3D = $Sprite3D
+@onready var name_label: Label = $SubViewport/UIContainer/NameLabel
+@onready var health_bar: ProgressBar = $SubViewport/UIContainer/BarContainer/HealthBar
+@onready var value_label: Label = $SubViewport/UIContainer/BarContainer/ValueLabel
+
+var _current_health: float = 100.0
+var _max_health: float = 100.0
+var _hp_tween: Tween = null
+var _fill_style: StyleBoxFlat = null
+
+func _ready() -> void:
+	height_offset = float(GameConfig.get_ui_value("health_bar", "height_offset", height_offset))
+	auto_hide_when_full = bool(GameConfig.get_ui_value("health_bar", "auto_hide_when_full", auto_hide_when_full))
+	use_dynamic_health_color = bool(GameConfig.get_ui_value("health_bar", "use_dynamic_health_color", use_dynamic_health_color))
+
+	position.y = height_offset
+	if sprite_3d and sub_viewport:
+		sprite_3d.texture = sub_viewport.get_texture()
+
+	# Clonar el StyleBox del relleno para que cada barra tenga su propia instancia única
+	# y no comparta el color con otros personajes o muñecos
+	if health_bar:
+		var orig_style := health_bar.get_theme_stylebox("fill")
+		if orig_style is StyleBoxFlat:
+			_fill_style = orig_style.duplicate() as StyleBoxFlat
+		else:
+			_fill_style = StyleBoxFlat.new()
+			_fill_style.corner_radius_top_left = 2
+			_fill_style.corner_radius_top_right = 2
+			_fill_style.corner_radius_bottom_right = 2
+			_fill_style.corner_radius_bottom_left = 2
+		health_bar.add_theme_stylebox_override("fill", _fill_style)
+
+	if auto_bind_combat_target and combat_target == null:
+		combat_target = _find_combat_target()
+
+	if combat_target:
+		combat_target.health_changed.connect(_on_health_changed)
+		if not combat_target.target_name.is_empty() and name_label and name_label.text.is_empty():
+			set_entity_name(combat_target.target_name)
+		set_health(combat_target.current_health, combat_target.max_health, false)
+	else:
+		set_health(_current_health, _max_health, false)
+
+## Configura el nombre a mostrar sobre la barra y su color distintivo.
+func set_entity_name(entity_name: String, text_color: Color = Color.WHITE) -> void:
+	if name_label:
+		name_label.text = entity_name
+		name_label.add_theme_color_override("font_color", text_color)
+
+## Permite fijar un color estático para la barra si se desactiva el color dinámico.
+func set_bar_color(color: Color) -> void:
+	use_dynamic_health_color = false
+	if _fill_style:
+		_fill_style.bg_color = color
+
+## Actualiza el estado de la barra de salud directamente de forma individual.
+func set_health(current: float, max_val: float, animate: bool = true) -> void:
+	_current_health = clampf(current, 0.0, max_val)
+	_max_health = maxf(1.0, max_val)
+
+	if health_bar == null:
+		return
+
+	health_bar.max_value = _max_health
+
+	if value_label:
+		value_label.text = "%d / %d" % [int(ceil(_current_health)), int(_max_health)]
+
+	# Ajuste dinámico de color según porcentaje de vida de ESTA entidad en su StyleBox exclusivo
+	if use_dynamic_health_color and _fill_style:
+		var ratio := _current_health / _max_health
+		var low_ratio := float(GameConfig.get_ui_value("health_bar", "low_health_ratio", 0.25))
+		var mid_ratio := float(GameConfig.get_ui_value("health_bar", "mid_health_ratio", 0.50))
+		var colors_dict := GameConfig.get_ui_value("health_bar", "colors", {}) as Dictionary
+
+		var col_high := GameConfig.get_color(str(colors_dict.get("high", "#2ed16b")), COLOR_HEALTH_HIGH)
+		var col_mid := GameConfig.get_color(str(colors_dict.get("mid", "#f5a626")), COLOR_HEALTH_MID)
+		var col_low := GameConfig.get_color(str(colors_dict.get("low", "#eb4242")), COLOR_HEALTH_LOW)
+
+		var target_fill_color := col_high
+		if ratio <= low_ratio:
+			target_fill_color = col_low
+		elif ratio <= mid_ratio:
+			target_fill_color = col_mid
+
+		_fill_style.bg_color = target_fill_color
+
+	if not animate:
+		health_bar.value = _current_health
+		_update_auto_hide()
+		return
+
+	# Actualización con interpolación rápida y directa
+	if _hp_tween and _hp_tween.is_valid():
+		_hp_tween.kill()
+	_hp_tween = create_tween()
+	var tween_dur := float(GameConfig.get_ui_value("health_bar", "tween_duration", 0.08))
+	_hp_tween.tween_property(health_bar, "value", _current_health, tween_dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+	_update_auto_hide()
+
+func _update_auto_hide() -> void:
+	if not auto_hide_when_full or sprite_3d == null:
+		return
+	var is_full := _current_health >= _max_health
+	var target_alpha := 0.0 if is_full else 1.0
+	var tween := create_tween()
+	tween.tween_property(sprite_3d, "modulate:a", target_alpha, 0.2)
+
+func _on_health_changed(current: float, max_val: float) -> void:
+	set_health(current, max_val, true)
+
+func _find_combat_target() -> CombatTarget:
+	var curr: Node = get_parent()
+	while curr != null and not (curr is Viewport):
+		var target := curr.get_node_or_null("CombatTarget") as CombatTarget
+		if target:
+			return target
+		for child in curr.get_children():
+			if child is CombatTarget:
+				return child
+		curr = curr.get_parent()
+	return null

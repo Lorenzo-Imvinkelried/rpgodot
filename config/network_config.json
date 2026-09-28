@@ -1,0 +1,7 @@
+{
+  "network": {
+    "default_ip": "127.0.0.1",
+    "default_port": 8910,
+    "max_players": 2
+  }
+}

@@ -4,10 +4,11 @@ extends StaticBody3D
 ## Responsabilidad: Muñeco de práctica para pruebas de combate y feedback visual de impacto.
 
 @onready var combat_target: CombatTarget = $CombatTarget
-@onready var label: Label3D = $Label3D
+@onready var health_bar: HealthBar3D = get_node_or_null("HealthBar3D")
 @onready var mesh: MeshInstance3D = $MeshInstance3D
 
 var _default_mat: StandardMaterial3D = null
+var _reset_timer: SceneTreeTimer = null
 
 func _ready() -> void:
 	if mesh:
@@ -16,16 +17,30 @@ func _ready() -> void:
 			_default_mat = mesh.mesh.surface_get_material(0)
 
 	if combat_target:
+		var dummy_hp := float(GameConfig.get_combat_value("targets", "dummy_max_health", 200.0))
+		combat_target.max_health = dummy_hp
+		combat_target.current_health = dummy_hp
 		combat_target.hit_received.connect(_on_hit_received)
-	_update_label()
+		combat_target.died.connect(_on_dummy_died)
 
-func _on_hit_received(damage: float, _hit_pos: Vector3, _attacker: Node) -> void:
-	_update_label()
+	if health_bar and combat_target:
+		health_bar.set_entity_name(combat_target.target_name, Color(1.0, 0.8, 0.55))
+		health_bar.set_health(combat_target.current_health, combat_target.max_health, false)
+
+func _on_hit_received(_damage: float, _hit_pos: Vector3, _attacker: Node) -> void:
 	_flash_red()
 
-func _update_label() -> void:
-	if label and combat_target:
-		label.text = "Muñeco (HP: %d/%d)" % [int(combat_target.current_health), int(combat_target.max_health)]
+func _on_dummy_died() -> void:
+	# Al llegar a 0 HP, restaurar la salud tras el tiempo configurado para permitir entrenamiento continuo
+	if _reset_timer != null:
+		return
+	var delay := float(GameConfig.get_combat_value("targets", "dummy_respawn_delay", 2.0))
+	_reset_timer = get_tree().create_timer(delay)
+	_reset_timer.timeout.connect(func():
+		_reset_timer = null
+		if combat_target:
+			combat_target.reset_health()
+	)
 
 func _flash_red() -> void:
 	if mesh == null:

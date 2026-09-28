@@ -27,7 +27,9 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	if config == null:
-		config = DEFAULT_CONFIG
+		config = DEFAULT_CONFIG.duplicate()
+	if config.has_method("apply_json_overrides"):
+		config.apply_json_overrides()
 
 	var peer_id := name.to_int()
 	var is_local := is_multiplayer_authority()
@@ -35,6 +37,18 @@ func _ready() -> void:
 	camera_pivot.setup(is_local)
 	_prev_global_pos = global_position
 	visuals.update_animation(is_moving, 0.0)
+
+	if combat_target:
+		combat_target.died.connect(_on_player_died)
+
+func _on_player_died() -> void:
+	if not is_multiplayer_authority():
+		return
+	var delay := float(GameConfig.get_combat_value("targets", "player_respawn_delay", 3.0))
+	get_tree().create_timer(delay).timeout.connect(func():
+		if combat_target:
+			combat_target.sync_reset_health()
+	)
 
 ## Establece un objetivo de combate para auto-aproximación y ataque.
 func set_combat_target(target: Node3D) -> void:

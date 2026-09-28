@@ -1,0 +1,17 @@
+{
+  "combat": {
+    "base_damage": 25.0,
+    "attack_range": 2.0,
+    "attack_speed": 0.8,
+    "impact_delay": 0.58,
+    "approach_range_multiplier": 1.3,
+    "impact_height_offset": 1.1
+  },
+  "targets": {
+    "player_max_health": 100.0,
+    "player_respawn_delay": 3.0,
+    "dummy_max_health": 200.0,
+    "dummy_respawn_delay": 2.0,
+    "crit_damage_threshold": 30.0
+  }
+}

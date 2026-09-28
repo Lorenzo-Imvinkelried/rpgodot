@@ -26,13 +26,25 @@ func setup(is_local: bool) -> void:
 	set_process_unhandled_input(is_local)
 
 	if is_local:
+		_apply_json_config()
 		top_level = true # Desacopla la rotación del padre para control orbital independiente
 		target_zoom = spring_arm.spring_length
 		var parent_node := get_parent() as Node3D
 		if parent_node:
-			global_position = parent_node.global_position + Vector3(0, 1.5, 0)
+			var pivot_h := float(GameConfig.get_player_value("camera", "pivot_height", 1.5))
+			global_position = parent_node.global_position + Vector3(0, pivot_h, 0)
 			current_yaw = parent_node.rotation.y
 		_apply_rotation()
+
+func _apply_json_config() -> void:
+	mouse_sensitivity = float(GameConfig.get_player_value("camera", "mouse_sensitivity", mouse_sensitivity))
+	min_pitch_degrees = float(GameConfig.get_player_value("camera", "min_pitch_degrees", min_pitch_degrees))
+	max_pitch_degrees = float(GameConfig.get_player_value("camera", "max_pitch_degrees", max_pitch_degrees))
+	min_zoom = float(GameConfig.get_player_value("camera", "min_zoom", min_zoom))
+	max_zoom = float(GameConfig.get_player_value("camera", "max_zoom", max_zoom))
+	zoom_step = float(GameConfig.get_player_value("camera", "zoom_step", zoom_step))
+	if spring_arm:
+		spring_arm.spring_length = float(GameConfig.get_player_value("camera", "default_zoom", spring_arm.spring_length))
 
 func _exit_tree() -> void:
 	if camera.current:

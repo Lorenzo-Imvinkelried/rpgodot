@@ -16,6 +16,10 @@ signal join_requested(ip: String, port: int)
 func _ready() -> void:
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
+	if ip_edit and ip_edit.text.is_empty():
+		ip_edit.text = str(GameConfig.get_network_value("network", "default_ip", "127.0.0.1"))
+	if port_edit and port_edit.text.is_empty():
+		port_edit.text = str(GameConfig.get_network_value("network", "default_port", 8910))
 
 func set_buttons_enabled(enabled: bool) -> void:
 	host_button.disabled = not enabled

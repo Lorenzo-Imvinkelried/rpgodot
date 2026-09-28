@@ -84,11 +84,14 @@ func _spawn_player(peer_id: int) -> void:
 	var player_instance: CharacterBody3D = player_scene.instantiate()
 	player_instance.name = str(peer_id)
 
-	# Posición de spawn diferenciada
+	# Posición de spawn diferenciada cargada desde config/player_config.json
+	var p1_pos := GameConfig.get_vector3(GameConfig.get_player_value("spawn", "player_1_position", [-3.0, 1.0, 0.0]), Vector3(-3.0, 1.0, 0.0))
+	var p2_pos := GameConfig.get_vector3(GameConfig.get_player_value("spawn", "player_2_position", [3.0, 1.0, 0.0]), Vector3(3.0, 1.0, 0.0))
+
 	if peer_id == 1:
-		player_instance.position = Vector3(-3.0, 1.0, 0.0)
+		player_instance.position = p1_pos
 	else:
-		player_instance.position = Vector3(3.0, 1.0, 0.0)
+		player_instance.position = p2_pos
 
 	players_container.add_child(player_instance, true)
 

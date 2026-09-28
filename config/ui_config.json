@@ -1,0 +1,29 @@
+{
+  "health_bar": {
+    "height_offset": 2.15,
+    "auto_hide_when_full": false,
+    "use_dynamic_health_color": true,
+    "tween_duration": 0.08,
+    "low_health_ratio": 0.25,
+    "mid_health_ratio": 0.50,
+    "colors": {
+      "high": "#2ed16b",
+      "mid": "#f5a626",
+      "low": "#eb4242"
+    }
+  },
+  "damage_numbers": {
+    "font_size_normal": 36,
+    "font_size_crit": 44,
+    "outline_size": 10,
+    "float_distance_y": 1.0,
+    "float_duration": 0.75,
+    "fade_delay": 0.47,
+    "fade_duration": 0.28,
+    "colors": {
+      "normal": "#fde047",
+      "crit": "#ff4533",
+      "outline": "#0d1014"
+    }
+  }
+}

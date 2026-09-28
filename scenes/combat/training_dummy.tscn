@@ -1,7 +1,8 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=7 format=3 uid="uid://b5o1k8v5h3u2e"]
 
 [ext_resource type="Script" path="res://scripts/combat/training_dummy.gd" id="1_dummy"]
 [ext_resource type="Script" path="res://scripts/combat/combat_target.gd" id="2_target"]
+[ext_resource type="PackedScene" path="res://scenes/combat/health_bar_3d.tscn" id="3_hbar"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.45
@@ -28,12 +29,8 @@ shape = SubResource("CapsuleShape3D_1")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 mesh = SubResource("CapsuleMesh_1")
 
-[node name="Label3D" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
-billboard = 1
-text = "Muñeco"
-font_size = 22
-modulate = Color(1, 0.6, 0.5, 1)
+[node name="HealthBar3D" parent="." instance=ExtResource("3_hbar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
 
 [node name="CombatTarget" type="Node" parent="."]
 script = ExtResource("2_target")

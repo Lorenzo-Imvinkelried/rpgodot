@@ -20,3 +20,11 @@ extends Resource
 
 ## Multiplicador de escala de gravedad sobre el personaje
 @export_range(0.0, 5.0, 0.1) var gravity_multiplier: float = 1.0
+
+## Aplica valores definidos en config/player_config.json si existen.
+func apply_json_overrides() -> void:
+	forward_speed = float(GameConfig.get_player_value("movement", "forward_speed", forward_speed))
+	backward_speed = float(GameConfig.get_player_value("movement", "backward_speed", backward_speed))
+	turn_speed = float(GameConfig.get_player_value("movement", "turn_speed", turn_speed))
+	deceleration_factor = float(GameConfig.get_player_value("movement", "deceleration_factor", deceleration_factor))
+	gravity_multiplier = float(GameConfig.get_player_value("movement", "gravity_multiplier", gravity_multiplier))

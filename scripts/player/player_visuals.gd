@@ -17,7 +17,8 @@ const KEYWORDS_ATTACK: Array[String] = ["slash", "attack", "punch", "strike", "h
 const StrideAnalyzerScript = preload("res://scripts/player/stride_analyzer.gd")
 const DEFAULT_ATTACK_ANIM = preload("res://resources/combat/anim_attack.res")
 
-@onready var label: Label3D = $Label3D
+@onready var health_bar: HealthBar3D = get_node_or_null("HealthBar3D")
+@onready var label: Label3D = get_node_or_null("Label3D")
 @onready var character_model: Node3D = get_node_or_null("CharacterModel")
 
 var anim_player: AnimationPlayer = null
@@ -31,13 +32,20 @@ func _ready() -> void:
 	_setup_anim_player()
 
 func configure_visuals(peer_id: int, is_local: bool) -> void:
-	if is_local:
-		label.text = "TÚ (ID: %d)" % peer_id
-		label.modulate = COLOR_LOCAL_LABEL
-	else:
-		label.text = "RIVAL (ID: %d)" % peer_id
-		label.modulate = COLOR_RIVAL_LABEL
-		_apply_rival_tint()
+	if health_bar:
+		if is_local:
+			health_bar.set_entity_name("TÚ (ID: %d)" % peer_id, COLOR_LOCAL_LABEL)
+		else:
+			health_bar.set_entity_name("RIVAL (ID: %d)" % peer_id, COLOR_RIVAL_LABEL)
+			_apply_rival_tint()
+	elif label:
+		if is_local:
+			label.text = "TÚ (ID: %d)" % peer_id
+			label.modulate = COLOR_LOCAL_LABEL
+		else:
+			label.text = "RIVAL (ID: %d)" % peer_id
+			label.modulate = COLOR_RIVAL_LABEL
+			_apply_rival_tint()
 
 	_setup_anim_player()
 

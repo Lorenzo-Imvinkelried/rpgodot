@@ -22,7 +22,9 @@ var _parent_body: CharacterBody3D = null
 
 func _ready() -> void:
 	if combat_config == null:
-		combat_config = DEFAULT_COMBAT_CONFIG
+		combat_config = DEFAULT_COMBAT_CONFIG.duplicate()
+	if combat_config.has_method("apply_json_overrides"):
+		combat_config.apply_json_overrides()
 	_parent_body = get_parent() as CharacterBody3D
 
 func set_target(new_target: Node3D) -> void:
@@ -100,7 +102,8 @@ func update_combat(delta: float, visuals: PlayerVisuals) -> void:
 
 		State.ATTACKING:
 			# Si el objetivo se aleja, volver a perseguir
-			if dist_horiz > attack_range * 1.3:
+			var approach_mult := float(GameConfig.get_combat_value("combat", "approach_range_multiplier", 1.3))
+			if dist_horiz > attack_range * approach_mult:
 				state = State.APPROACHING
 				return
 
@@ -142,7 +145,8 @@ func _execute_attack(visuals: PlayerVisuals) -> void:
 	})
 
 func _apply_impact(target: Node3D) -> void:
-	var hit_pos := target.global_position + Vector3(0, 1.1, 0)
+	var offset_y := float(GameConfig.get_combat_value("combat", "impact_height_offset", 1.1))
+	var hit_pos := target.global_position + Vector3(0, offset_y, 0)
 	var dmg := combat_config.base_damage if combat_config else 15.0
 	var target_path := target.get_path()
 

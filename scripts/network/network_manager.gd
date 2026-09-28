@@ -22,10 +22,11 @@ func _ready() -> void:
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
-func start_host(port: int = DEFAULT_PORT) -> Error:
-	var target_port := port if port > 0 else DEFAULT_PORT
+func start_host(port: int = 0) -> Error:
+	var target_port := port if port > 0 else int(GameConfig.get_network_value("network", "default_port", DEFAULT_PORT))
+	var max_p := int(GameConfig.get_network_value("network", "max_players", MAX_PLAYERS))
 	var peer := ENetMultiplayerPeer.new()
-	var error := peer.create_server(target_port, MAX_PLAYERS)
+	var error := peer.create_server(target_port, max_p)
 	
 	if error != OK:
 		return error
@@ -34,11 +35,11 @@ func start_host(port: int = DEFAULT_PORT) -> Error:
 	host_started.emit()
 	return OK
 
-func start_client(ip: String = DEFAULT_IP, port: int = DEFAULT_PORT) -> Error:
+func start_client(ip: String = "", port: int = 0) -> Error:
 	var target_ip := ip.strip_edges()
 	if target_ip == "":
-		target_ip = DEFAULT_IP
-	var target_port := port if port > 0 else DEFAULT_PORT
+		target_ip = str(GameConfig.get_network_value("network", "default_ip", DEFAULT_IP))
+	var target_port := port if port > 0 else int(GameConfig.get_network_value("network", "default_port", DEFAULT_PORT))
 
 	var peer := ENetMultiplayerPeer.new()
 	var error := peer.create_client(target_ip, target_port)

@@ -20,3 +20,10 @@ extends Resource
 ## Daño base por golpe
 @export_range(1.0, 1000.0, 1.0) var base_damage: float = 25.0
 
+## Aplica valores definidos en config/combat_config.json si existen.
+func apply_json_overrides() -> void:
+	attack_range = float(GameConfig.get_combat_value("combat", "attack_range", attack_range))
+	attack_speed = float(GameConfig.get_combat_value("combat", "attack_speed", attack_speed))
+	impact_delay = float(GameConfig.get_combat_value("combat", "impact_delay", impact_delay))
+	base_damage = float(GameConfig.get_combat_value("combat", "base_damage", base_damage))
+
