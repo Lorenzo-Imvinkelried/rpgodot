@@ -124,5 +124,126 @@ Evita el retraso opuesto al girar con A/D haciendo que el pivote y la cápsula r
 
 ---
 
-> [!TIP]
-> **Referencia de arquitectura del proyecto:** Antes de modificar o crear módulos existentes, consultar la documentación y estructura arquitectónica definida en el repositorio para alinear cualquier cambio con los patrones establecidos.
+## 12. Arquitectura objetivo del proyecto (`rpgodot`)
+
+El proyecto sigue una organización modular orientada a sistemas y dominios de juego.
+
+> [!IMPORTANT]
+> **Estructura evolutiva (bajo demanda):** La siguiente es una **estructura objetivo**, no un árbol de carpetas que deba crearse vacío de golpe. Cada carpeta y subcarpeta debe crearse únicamente cuando exista una responsabilidad real y archivos concretos que justifiquen su existencia.
+
+```text
+rpgodot/
+├── AGENTS.md
+├── project.godot
+├── listar_carpetas.bat
+│
+├── assets/                  # Recursos brutos de arte, sonido y multimedia
+│   ├── models/              # Modelos 3D (characters, enemies, environments, weapons)
+│   ├── animations/          # Archivos y pistas de animación
+│   ├── textures/            # Texturas y mapas de materiales
+│   ├── audio/               # Efectos de sonido (SFX) y música
+│   └── materials/           # Materiales compartidos (.tres de BaseMaterial3D/ShaderMaterial)
+│
+├── config/                  # Archivos de configuración externa (JSON / planos)
+│   ├── gameplay/            # Parámetros numéricos y balance de juego
+│   ├── network/             # Puertos, IPs por defecto, tasas de tick
+│   └── rendering/           # Ajustes gráficos y visuales
+│
+├── resources/               # Recursos nativos tipados de Godot (.tres / .res)
+│   ├── characters/          # Definiciones base de personajes
+│   ├── combat/              # Configuraciones de ataques, animaciones y combos
+│   ├── items/               # Definiciones de equipamiento y consumibles
+│   ├── enemies/             # Datos de arquetipos de enemigos
+│   └── player/              # Recursos exclusivos de configuración del jugador
+│
+├── scenes/                  # Árbol de nodos y escenas instanciables (.tscn)
+│   ├── characters/          # Variantes visuales o arquetipos de personajes
+│   ├── combat/              # Escenas de combate, dummies y FX instanciables
+│   ├── enemies/             # Escenas de enemigos con sus controladores
+│   ├── world/               # Niveles, mapas, zonas y puntos de aparición
+│   ├── player/              # Escena principal del jugador humano (player.tscn)
+│   ├── ui/                  # HUD, menús, barras de estado y ventanas
+│   └── network/             # Nodos de red y sincronizadores
+│
+├── scripts/                 # Código fuente GDScript estructurado por capas y dominio
+│   ├── core/                # Fundamentos y utilidades agnósticas de gameplay
+│   │   ├── events/          # Event buses globales o señales desacopladas
+│   │   ├── utilities/       # Métodos matemáticos, serializadores, helpers
+│   │   └── managers/        # Gestores globales o singletons de bajo nivel
+│   │
+│   ├── gameplay/            # Reglas y mecánicas de juego (jugador + enemigos)
+│   │   ├── combat/          # Controladores de combate, cálculo de daño, hitboxes
+│   │   ├── characters/      # Clases base compartidas entre entes del mundo
+│   │   ├── enemies/         # Comportamientos específicos de IA y enemigos
+│   │   ├── inventory/       # Lógica de contenedores, slots y mochilas
+│   │   ├── items/           # Comportamiento de objetos en juego
+│   │   ├── skills/          # Sistema de lanzamiento y cooldowns de habilidades
+│   │   └── progression/     # Fórmulas de experiencia, niveles y estadísticas
+│   │
+│   ├── player/              # Lógica específica y exclusiva del personaje local
+│   │   ├── controller/      # Entrada de teclado/ratón (PlayerController)
+│   │   ├── movement/        # Locomoción, análisis de zancadas (stride), saltos
+│   │   └── abilities/       # Coordinación de habilidades activadas por el input
+│   │
+│   ├── world/               # Gestión del entorno físico
+│   │   ├── maps/            # Carga y streaming de zonas
+│   │   ├── spawning/        # Gestión de puntos de aparición de entidades
+│   │   └── interaction/     # Cofres, puertas, palancas y gatillos
+│   │
+│   ├── network/             # Conectividad y arquitectura cliente-servidor
+│   │   ├── client/          # Predicción local, recepción de snapshots, interpolación
+│   │   ├── server/          # Validación autoritativa, lógica de servidor headless
+│   │   ├── synchronization/ # Replicación de variables y RPCs
+│   │   └── sessions/        # Autenticación, estados de conexión, reconexiones
+│   │
+│   ├── ui/                  # Controladores de interfaz de usuario
+│   └── tools/               # Scripts de desarrollo, editores y generadores de escenas
+│
+└── tests/                   # Pruebas automatizadas (unitarias y de integración)
+    ├── gameplay/
+    ├── network/
+    └── utilities/
+```
+
+## 13. Límites de sistemas y reglas de desacoplamiento
+
+### 13.1. Separación de `gameplay` vs `player`
+* El combate, la vida, las estadísticas y las habilidades **NO pertenecen al jugador**: pertenecen al dominio de `gameplay`.
+* Un enemigo, un aliado o un dummy de prueba deben poder utilizar los mismos componentes de combate ([combat_controller.gd](file:///c:/Users/HP/Desktop/LORENZO/rpgodot/scripts/combat/combat_controller.gd)) y recibir daño sin importar si el dueño es un jugador humano o un NPC.
+* La carpeta `player/` contiene únicamente lo que corresponde al avatar del usuario: traducción de inputs, control de cámara, interpolación local y animaciones específicas de la malla del jugador.
+
+### 13.2. Separación entre Lógica Autoritativa y Presentación Visual
+* **Lógica Pura / Dominio (Servidor + Cliente):** Cálculo numérico de daño, aplicación de cooldowns, detección de si un ataque impactó según distancias y estados. Estos scripts **nunca** deben instanciar partículas ni depender de nodos gráficos.
+* **Presentación / Efectos (Cliente y Herramientas):** Números de daño flotantes ([damage_number_fx.gd](file:///c:/Users/HP/Desktop/LORENZO/rpgodot/scripts/combat/damage_number_fx.gd)), efectos de impacto ([hit_fx.gd](file:///c:/Users/HP/Desktop/LORENZO/rpgodot/scripts/combat/hit_fx.gd)), barras de vida en pantalla ([health_bar_3d.gd](file:///c:/Users/HP/Desktop/LORENZO/rpgodot/scripts/combat/health_bar_3d.gd)), sonidos y animación. Estos elementos solo reaccionan a señales emitidas por la lógica. Pueden ejecutarse tanto en el cliente final como en herramientas de editor (`@tool`), escenas de test y sandbox locales de prueba.
+
+## 14. Modelo de red: Servidor Dedicado Autoritativo
+
+El proyecto tiene como **arquitectura objetivo** un modelo de juego multijugador con **Servidor Dedicado Autoritativo** (`Godot Headless`).
+
+> [!NOTE]
+> **Flexibilidad en fase de prototipado:** El servidor dedicado es el norte arquitectónico, pero se permiten excepciones justificadas durante las fases iniciales de prototipo y gameplay local. No es necesario sincronizar por red cada mecánica desde el día uno; la prioridad es desacoplar la lógica para que luego pueda conectarse a la red sin reescrituras masivas.
+
+1. **El cliente nunca decide el estado del mundo:** El cliente no calcula si su golpe acertó ni cuánta vida le queda al objetivo. El cliente envía un mensaje RPC de *intención* (ejemplo: `solicitar_ataque(posicion, id_habilidad)`).
+2. **El servidor autoriza y valida:** El servidor ejecuta la simulación, valida que el jugador tenga recursos/cooldown suficientes, calcula el daño y replica el resultado.
+3. **El cliente predice e interpola:** Para que la experiencia sea reactiva y sin retraso perceptible, el cliente predice visualmente el inicio del movimiento o la animación, rectificando la posición suavemente si el servidor envía una corrección.
+4. **Ejecución Headless:** La lógica de servidor debe poder correr sin GPU ni monitor (`--headless`). Cualquier dependencia con recursos gráficos, shaders o ventanas en código que deba correr en servidor romperá la arquitectura.
+
+## 15. Migración y reutilización de lógica (C++ 2D a Godot 3D)
+
+Al portar sistemas del proyecto C++ 2D (`RPGARENA`) hacia `rpgodot`, clasificar cada módulo en tres categorías obligatorias:
+
+| Categoría | Ejemplo | Tratamiento en Godot |
+| :--- | :--- | :--- |
+| **Reglas de Juego Puras** | Fórmulas de daño, tablas de loot, mitigación por armadura, experiencia, árboles de talentos. | **Reutilizar/Adaptar:** Portar a GDScript tipado puro (`RefCounted` / scripts estáticos) o mantener en C++ mediante GDExtension si la complejidad matemática lo justifica. Independientes de nodos 3D. |
+| **Lógica ligada a 2D** | Coordenadas cartesianas 2D, ordenamiento de profundidad, colisiones ortogonales. | **Rediseñar a 3D:** Usar `CharacterBody3D`, `Vector3`, `RayCast3D`, `ShapeCast3D` y los sistemas de física 3D de Godot. |
+| **Lógica de motor propia** | Manejador de ventanas, bucle de renderizado, atlas de sprites, sincronización de hilos. | **Reimplementar:** Delegar en las APIs nativas de Godot 4 (SceneTree, AnimationPlayer, RenderServer). |
+
+## 16. Protocolo de toma de decisiones para IA y desarrolladores
+
+Antes de crear un archivo o modificar uno existente:
+1. **Identificar la capa:** ¿Es `core` (utilidad general), `gameplay` (mecánica compartida), `player` (interfaz del jugador), `network` (comunicación) o `ui` (pantalla)?
+2. **Verificar el contexto de ejecución:** ¿Este script correrá en el servidor dedicado, en el cliente, o en ambos? Si corre en el servidor, no puede contener lógica visual ni de sonido.
+3. **Comprobar si existe un componente análogo:** Si vas a añadir una habilidad a un enemigo, verifica si `gameplay/skills` o `gameplay/combat` ya disponen de la estructura antes de inventar una solución paralela.
+4. **Tipado estático razonable:** Emplear tipado estático explícito en firmas de funciones públicas, APIs de dominio y parámetros clave (`var target: Node3D = null`, `func calculate_damage(...) -> int:`). Evitar caer en sobre-ingeniería o tipados enrevesados para scripts utilitarios simples o expresiones efímeras.
+
+

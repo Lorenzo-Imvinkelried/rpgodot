@@ -1,0 +1,592 @@
+================================================================================
+                    RPGARENA - ESPECIFICACIÓN TÉCNICA DE COMBATE,
+                    STATS, CÁLCULOS DE DAÑO Y SISTEMAS ASOCIADOS
+================================================================================
+Documento maestro preparado para desarrollo e integración en motores 3D (MMORPG)
+Lenguaje conceptual: C++ / C# / Pseudocódigo universal orientado a objetos
+================================================================================
+
+TABLA DE CONTENIDOS:
+1. ARQUITECTURA GENERAL DEL SISTEMA
+2. DICCIONARIO COMPLETO DE ESTADÍSTICAS (STATS Y ATRIBUTOS)
+3. FÓRMULAS DE DERIVACIÓN Y ESCALADO DE ATRIBUTOS PRIMARIOS
+4. FÓRMULA DE ACIERTO Y EVASIÓN (ACCURACY VS EVASION)
+5. PIPELINE Y ALGORITMO COMPLETO DE CÁLCULO DE DAÑO (COMBAT CALCULATOR)
+   - 5.1 Fase 1: Generación del Daño Bruto (Raw Damage)
+   - 5.2 Fase 2: Modificadores de Combo / Cadencia (Tap System)
+   - 5.3 Fase 3: Mitigación (Armadura, Bloqueo, Penetración, Nivel)
+   - 5.4 Daño de Habilidades (Skill Damage)
+6. SISTEMA DE GOLPES MÚLTIPLES (MULTI-STRIKE & GHOST SLASHES)
+7. EFECTOS ON-HIT, ESTADOS ALTERADOS (CC) Y DAÑO EN EL TIEMPO (DoT)
+   - 7.1 Robo de Vida y Maná (Lifesteal & Mana Steal)
+   - 7.2 Espinas (Thorns)
+   - 7.3 Aturdimiento y Tenacidad (Stun & Tenacity)
+   - 7.4 Sangrado Continuo (Bleed System sin Snapshotting)
+   - 7.5 Ralentizaciones (Slow Movement & Slow Attack)
+   - 7.6 Ondas de Área de Efecto (AoE Waves)
+8. MECÁNICAS DEFENSIVAS ACTIVAS Y CONTRA-JUEGO
+   - 8.1 Esquiva con Marcos de Invulnerabilidad (Dash I-Frames)
+   - 8.2 Guardia / Bloqueo Activo
+   - 8.3 Interrupción de Casteos y Castigo Crítico
+9. FÍSICA DE RETROCESO POR MUERTE (DEATH KNOCKBACK PHYSICS)
+10. SISTEMAS DE PROGRESIÓN Y MEJORA DE EQUIPO
+    - 10.1 Curva Exponencial de Experiencia y Subida de Nivel
+    - 10.2 Fortificación de Equipo (+1, +2, ...)
+    - 10.3 Sistema de Cultivo de Ítems (Item Cultivation)
+    - 10.4 Engarce de Gemas (Sockets)
+11. GUÍA DE ADAPTACIÓN PARA UN MMORPG 3D (ARQUITECTURA CLIENTE-SERVIDOR)
+
+
+================================================================================
+1. ARQUITECTURA GENERAL DEL SISTEMA
+================================================================================
+
+El sistema de combate está desacoplado siguiendo el principio de responsabilidad única:
+
+1. Stat System (Contenedor de Atributos):
+   - Almacena atributos base, modificadores planos de equipo, títulos, gemas y buffs temporales.
+   - Posee un método recalculateStats() que evalúa de forma determinista todas las fórmulas secundarias.
+
+2. CombatCalculator (Calculadora Pura y Sin Estado):
+   - Clase estática con funciones puras que reciben punteros o estructuras de Atacante y Defensor.
+   - No almacena estado en memoria. Dado el estado A y B, retorna un DamageResult inmutable.
+   - Garantiza reproducibilidad tanto en el cliente como en el servidor autoritativo.
+
+3. CombatSystem / CombatDirector (Orquestador de Eventos):
+   - Maneja timers de ataque, secuencias de animación, colisiones y llamadas a Feedback (números flotantes, sonidos, sacudida de cámara, partículas).
+
+4. Status & Debuff Manager:
+   - Procesa ticks periódicos de sangrado, aturdimientos, ralentizaciones y ondas expansivas en el espacio.
+
+
+================================================================================
+2. DICCIONARIO COMPLETO DE ESTADÍSTICAS (STATS Y ATRIBUTOS)
+================================================================================
+
+A) ATRIBUTOS PRIMARIOS:
+- STR (Fuerza): Potencia el ataque físico bruto y la masa del golpe.
+- DEX / AGI (Destreza / Agilidad): Potencia la velocidad de ataque y la probabilidad de crítico.
+- INT (Inteligencia): Potencia la reserva de maná total y habilidades mágicas.
+- VIT (Vitalidad): Potencia los puntos de vida máximos y la defensa física base.
+
+B) ESTADÍSTICAS DE COMBATE BÁSICAS:
+- ATTACK (Atq): Poder ofensivo físico base.
+- DEFENSE (Def): Armadura física utilizada en la curva de mitigación.
+- MAX_HP: Puntos de salud máximos.
+- MAX_MP: Puntos de maná máximos.
+- HP_REGEN: Porcentaje de vida recuperado por segundo.
+- MP_REGEN: Porcentaje de maná recuperado por segundo.
+- ACCURACY: Precisión ofensiva para superar la evasión enemiga.
+- EVASION: Capacidad defensiva para evitar ser impactado.
+
+C) MODIFICADORES OFENSIVOS AVANZADOS:
+- ATK_SPEED: Frecuencia de ataques por segundo (ej. 1.40 = 1.4 ataques/seg).
+- CRIT_CHANCE: Probabilidad de asestar un golpe crítico (0% a 100%).
+- CRIT_DMG: Multiplicador porcentual de daño al realizar crítico (Base: 150.0%).
+- ARMOR_PEN_FLAT: Cantidad plana de armadura enemiga que se ignora.
+- ARMOR_PEN_PERCENT: Porcentaje de armadura enemiga ignorada antes de la plana.
+- TRUE_DMG_PERCENT: Porcentaje del daño infligido que se transforma en Daño Verdadero (ignora armadura).
+- EXECUTE_DMG_PERCENT: Bono de daño aplicado cuando el enemigo está bajo el umbral de vida.
+- EXECUTE_THRESH_PERCENT: Umbral de vida (% del Max HP del defensor) que activa la ejecución.
+- ENEMY_MAX_HP_DAMAGE_PERCENT: Daño adicional basado en un porcentaje de la vida máxima del defensor.
+- PHYSICAL_DAMAGE_BONUS: Multiplicador aditivo porcentual al daño físico final (Base: 100%).
+
+D) MODIFICADORES DEFENSIVOS AVANZADOS:
+- BLOCK_CHANCE: Probabilidad de bloquear un impacto físico (0% a 100%).
+- BLOCK_VALUE: Porcentaje de daño mitigado al ocurrir un bloqueo exitoso (Base: 50%).
+- THORNS: Porcentaje del daño recibido que se devuelve como daño físico al atacante.
+- TENACITY: Reducción porcentual de la duración de efectos de control de masas (Stun, Silence, Fear, Root).
+- DMG_REDUCTION: Reducción porcentual de daño universal y directo tras armadura.
+- CRIT_AVOIDANCE: Reduce directamente la probabilidad de golpe crítico del atacante.
+- ANTI_ARMOR_PEN_PERCENT: Resistencia que resta directamente la penetración porcentual del atacante.
+- ANTI_ARMOR_PEN_FLAT: Resistencia que resta directamente la penetración plana del atacante.
+
+E) UTILIDAD Y SOSTENIBILIDAD:
+- LIFESTEAL: Porcentaje del daño infligido curado como vida.
+- MANA_STEAL: Porcentaje del daño infligido restaurado como maná.
+- MOVE_SPEED: Velocidad de desplazamiento en unidades/segundo.
+- COOLDOWN_REDUCTION: Reducción de enfriamiento de habilidades (0% a cap deseado, ej. 40%).
+- XP_BONUS: Incremento porcentual a la experiencia obtenida al derrotar enemigos.
+
+F) CADENCIA Y MULTI-IMPACTO:
+- DOUBLE_STRIKE: Probabilidad de ejecutar un segundo impacto consecutivo en el mismo ciclo.
+- TRIPLE_STRIKE: Probabilidad de ejecutar un tercer impacto consecutivo.
+
+G) ESTADOS ALTERADOS Y CONTROL DE MASAS (OFFENSIVE DEBUFFS):
+- STUN_CHANCE: Probabilidad por impacto de aplicar aturdimiento.
+- STUN_DURATION: Duración base en segundos del aturdimiento aplicado.
+- BLEED_FLAT: Daño plano por tick (1 seg) de sangrado infligido.
+- BLEED_DMG_PERCENT: Daño porcentual del ataque del emisor aplicado por cada tick de sangrado.
+- BLEED_DURATION_FLAT: Duración fija en segundos del sangrado plano.
+- BLEED_DURATION_PERCENT: Duración fija en segundos del sangrado porcentual.
+- SLOW_MOVE_PERCENT: Porcentaje de reducción de movimiento infligido al objetivo.
+- SLOW_MOVE_DURATION: Duración del freno de movimiento en segundos.
+- SLOW_ATTACK_PERCENT: Porcentaje de reducción de velocidad de ataque infligido.
+- SLOW_ATTACK_DURATION: Duración del freno de ataque en segundos.
+- AOE_RADIUS: Radio de efecto en unidades donde se propaga el impacto primario.
+- AOE_DAMAGE_PERCENT: Porcentaje del daño del impacto primario propagado a los objetivos en área.
+
+
+================================================================================
+3. FÓRMULAS DE DERIVACIÓN Y ESCALADO DE ATRIBUTOS PRIMARIOS
+================================================================================
+
+Constantes Base de Configuración:
+- BASE_STR = 10, BASE_DEX = 10, BASE_INT = 10, BASE_VIT = 10
+- BASE_ACCURACY = 100, BASE_EVASION = 200
+- HP_PER_VIT = 20
+- DEF_PER_VIT = 2
+- MP_PER_INT = 20
+- ATK_PER_STR = 3
+- BASE_ATK_SPEED = 1.4f (ataques por segundo)
+- ATK_SPEED_PER_AGI = 0.1f (por cada 10 puntos de Agilidad/DEX, es decir, 0.01 por punto)
+- CRIT_PER_AGI = 1.0f (por cada 10 puntos de Agilidad/DEX, es decir, 0.1% por punto)
+
+Fórmulas en recalculateStats():
+
+1. Totales de Atributos con bonos porcentuales de gemas/equipo:
+   totalStr = (baseStr + bonusStr + buffStr) * (1.0 + equipStrPercent / 100.0)
+   totalAgi = (baseAgi + bonusAgi + buffAgi) * (1.0 + equipAgiPercent / 100.0)
+   totalInt = (baseInt + bonusInt + buffInt) * (1.0 + equipIntPercent / 100.0)
+   totalVit = (baseVit + bonusVit + buffVit) * (1.0 + equipVitPercent / 100.0)
+
+2. Puntos de Vida Máximos (Max HP):
+   mMaxHp = (totalVit * HP_PER_VIT) + baseMaxHp + equipHpBonus + buffHp
+   mMaxHp = mMaxHp * (1.0 + equipHpPercent / 100.0)
+   (Garantizar mMaxHp >= 1)
+
+3. Defensa Física (Defense):
+   mDefense = (totalVit * DEF_PER_VIT) + baseDefense + equipDefense + buffDef
+   mDefense = mDefense * (1.0 + equipDefensePercent / 100.0)
+   (Garantizar mDefense >= 0)
+
+4. Puntos de Maná Máximos (Max MP):
+   mMaxMp = (totalInt * MP_PER_INT) + baseMaxMp + equipMpBonus + buffMp
+   mMaxMp = mMaxMp * (1.0 + equipMpPercent / 100.0)
+   (Garantizar mMaxMp >= 0)
+
+5. Poder de Ataque (Attack):
+   mAttack = (totalStr * ATK_PER_STR) + baseAttack + equipAttack + buffAtk
+   mAttack = mAttack * (1.0 + equipAttackPercent / 100.0)
+   (Garantizar mAttack >= 0)
+
+6. Precisión y Evasión:
+   mAccuracy = max(0, baseAccuracy + bonusAccuracy + buffAccuracy)
+   mEvasion  = max(0, baseEvasion  + bonusEvasion  + buffEvasion)
+
+7. Probabilidad y Daño Crítico:
+   agiUnits = totalAgi / 10.0
+   rawCritChance = baseCritChance + equipCritChance + (agiUnits * 1.0) + buffCritChance
+   mCritChance = clamp(rawCritChance, 0.0, 100.0)
+   mCritDamage = max(0.0, baseCritDamage + equipCritDamage + buffCritDamage) // Base: 150.0%
+
+8. Velocidad de Ataque:
+   mAtkSpeed = max(0.05, baseAtkSpeed + equipAtkSpeed + (agiUnits * 0.10) + buffAtkSpeed)
+
+
+================================================================================
+4. FÓRMULA DE ACIERTO Y EVASIÓN (ACCURACY VS EVASION)
+================================================================================
+
+La fórmula implementa rendimientos decrecientes y ajuste diferencial por nivel entre Atacante y Defensor.
+
+Fórmula Matemática:
+1. Ponderación de Evasión frente a Precisión (Factor k = 0.25):
+   La precisión pesa 4 veces más que la evasión para evitar que acumular evasión rompa el combate.
+   Si Accuracy == Evasion:
+     statChance = Acc / (Acc + Eva * 0.25)
+     statChance = 100 / (100 + 25) = 100 / 125 = 0.80 (80% de probabilidad base)
+
+2. Factor Diferencial de Nivel (Level Scaling):
+   levelDiff = attackerLevel - defenderLevel
+   levelFactor = levelDiff * LEVEL_DIFF_HIT_PENALTY
+   Donde LEVEL_DIFF_HIT_PENALTY = 0.002 (0.2% por nivel de diferencia).
+   Ejemplo: Si eres 10 niveles superior, ganas +2% de probabilidad de acierto.
+
+3. Probabilidad Final y Clamp de Seguridad:
+   finalChance = statChance + levelFactor
+   finalChance = clamp(finalChance, 0.05, 1.00) // 5% mínimo garantizado, hasta 100%
+
+4. Tirada Determinista:
+   return Random(0.0, 100.0) <= (finalChance * 100.0)
+
+
+================================================================================
+5. PIPELINE Y ALGORITMO COMPLETO DE CÁLCULO DE DAÑO (COMBAT CALCULATOR)
+================================================================================
+
+Estructura de Retorno (DamageResult):
+struct DamageResult {
+    int totalDamage = 0;
+    int physicalDamage = 0;
+    int trueDamage = 0;
+    bool isCrit = false;
+    bool isBlocked = false;
+};
+
+--------------------------------------------------------------------------------
+5.1 Fase 1: Generación del Daño Bruto (Raw Output)
+--------------------------------------------------------------------------------
+Función: calculateDamage(attacker, defender, allowTrueDamage = true, flatBonus = 0)
+
+1. Ataque Base y Multiplicador Físico:
+   rawAttack = attacker.getAttack() + flatBonus
+   damageMultiplier = attacker.getPhysicalDamageBonus() / 100.0 // Base: 1.0 (100%)
+   enhancedDamage = rawAttack * damageMultiplier
+
+2. Daño Porcentual por Vida Máxima del Enemigo:
+   hpPct = attacker.getEnemyMaxHpDamagePercent()
+   if (hpPct > 0.0):
+       enhancedDamage += defender.getMaxHp() * (hpPct / 100.0)
+
+3. Variación Aleatoria de Daño (+/- 6%):
+   variancePercent = 6 // Configurable
+   randomOffset = RandomInt(-variancePercent, +variancePercent)
+   varianceFactor = 1.0 + (randomOffset / 100.0)
+   enhancedDamage *= varianceFactor
+
+4. Mecánica de Ejecución (Execute Damage):
+   thresholdFactor = attacker.getExecuteThresholdFactor() // ej: 0.25 (25% HP)
+   if (thresholdFactor > 0.0):
+       executionHP = defender.getMaxHp() * thresholdFactor
+       if (defender.getCurrentHp() < executionHP):
+           enhancedDamage *= attacker.getExecuteDamageMultiplier() // ej: 1.50 (+50%)
+
+5. Determinación de Golpe Crítico:
+   isCrit = false
+   critChance = attacker.getCritChance()
+   critAvoid = defender.getCritAvoidancePercent()
+   finalCritChance = max(0.0, critChance - critAvoid)
+   if (RandomRoll(finalCritChance)):
+       critMult = attacker.getCritDamage() / 100.0 // ej: 150% -> 1.5
+       enhancedDamage *= critMult
+       isCrit = true
+
+--------------------------------------------------------------------------------
+5.2 Fase 2: Modificadores de Combo / Cadencia (Tap System)
+--------------------------------------------------------------------------------
+Para el jugador en ataques básicos:
+- Row 1 (Cargas de Habilidad):
+  Si el jugador acumula cargas consumibles (hasta 5 cargas, +15% por carga):
+  chargeMultiplier = 1.0 + (charges * 0.15)
+  enhancedDamage *= chargeMultiplier
+
+- Row 2 (Combo Hit Counter):
+  Cada ataque básico incrementa un contador. Si alcanza el golpe de umbral (ej. 4to golpe consecutivo):
+  thresholdMultiplier = 1.50 // +50% de daño
+  enhancedDamage *= thresholdMultiplier
+
+--------------------------------------------------------------------------------
+5.3 Fase 3: Mitigación (calculateMitigatedDamage)
+--------------------------------------------------------------------------------
+Función: calculateMitigatedDamage(attacker, defender, totalRaw, isPhysical, allowTrueDamage)
+
+1. Desglose de Daño Verdadero (True Damage):
+   truePct = 0.0
+   if (attacker && allowTrueDamage):
+       truePct = clamp(attacker.getTrueDamagePercent() / 100.0, 0.0, 1.0)
+
+   if (!isPhysical):
+       // Daño puramente mágico o ambiental ignora armadura
+       result.physicalDamage = 0
+       result.trueDamage = int(totalRaw)
+       result.totalDamage = result.trueDamage
+       return result
+
+   rawTrue = totalRaw * truePct
+   rawPhys = totalRaw * (1.0 - truePct)
+
+2. Comprobación de Bloqueo (Escudos / Postura):
+   blockChance = defender.getBlockChance()
+   if (blockChance > 0.0 && rawPhys > 0.001):
+       if (RandomRoll(blockChance)):
+           result.isBlocked = true
+           blockVal = defender.getBlockValuePercent() // Default 50%
+           multiplier = max(0.0, 1.0 - (blockVal / 100.0))
+           rawPhys *= multiplier
+
+3. Penetración de Armadura y Anti-Penetración:
+   targetTotalArmor = defender.getDefense()
+   effectivePenPercent = 0.0
+   effectivePenFlat = 0.0
+
+   if (attacker):
+       attackerPenPercent = attacker.getArmorPenetrationPercent()
+       attackerPenFlat = attacker.getArmorPenetration()
+       antiPenPercent = defender.getAntiArmorPenPercent()
+       antiPenFlat = defender.getAntiArmorPenFlat()
+
+       effectivePenPercent = max(0.0, attackerPenPercent - antiPenPercent)
+       effectivePenFlat = max(0.0, attackerPenFlat - antiPenFlat)
+
+   armorAfterPercent = targetTotalArmor * (1.0 - (effectivePenPercent / 100.0))
+   effectiveDefense = max(0.0, armorAfterPercent - effectivePenFlat)
+
+4. Curva Hiperbólica de Reducción por Armadura:
+   targetLevel = defender.getLevel()
+   defenseConstant = (targetLevel * DEFENSE_CONSTANT_LEVEL_SCALE) + DEFENSE_CONSTANT_BASE
+   // Valores por defecto: DEFENSE_CONSTANT_LEVEL_SCALE = 15.0, DEFENSE_CONSTANT_BASE = 100.0
+   // A nivel 1: C = 115. A nivel 50: C = 850.
+   armorReduction = effectiveDefense / (effectiveDefense + defenseConstant)
+   reducedPhys = rawPhys * (1.0 - armorReduction)
+
+5. Penalización / Bono por Diferencial de Nivel:
+   if (attacker):
+       levelDiff = attacker.getLevel() - defender.getLevel()
+       // LEVEL_DIFF_DAMAGE_PENALTY = 0.02 (2% por nivel de diferencia)
+       levelMultiplier = 1.0 + (levelDiff * 0.02)
+       levelMultiplier = clamp(levelMultiplier, MIN_LEVEL_MULTIPLIER, MAX_LEVEL_MULTIPLIER)
+       // MIN_LEVEL_MULTIPLIER = 0.10 (-90%), MAX_LEVEL_MULTIPLIER = 1.50 (+50%)
+       reducedPhys *= levelMultiplier
+       rawTrue *= levelMultiplier
+
+6. Reducción de Daño Directo Porcentual:
+   dmgRed = defender.getDamageReductionPercent()
+   if (dmgRed > 0.0):
+       reducedPhys *= max(0.0, 1.0 - (dmgRed / 100.0))
+
+7. Conversión Final y Regla del Daño Mínimo:
+   result.physicalDamage = max(0, int(reducedPhys))
+   result.trueDamage = max(0, int(rawTrue))
+   result.totalDamage = result.physicalDamage + result.trueDamage
+
+   if (result.totalDamage < 1 && totalRaw > 0):
+       result.totalDamage = 1
+       if (result.physicalDamage == 0 && result.trueDamage == 0):
+           result.physicalDamage = 1
+
+   return result
+
+--------------------------------------------------------------------------------
+5.4 Daño de Habilidades (calculateSkillDamage)
+--------------------------------------------------------------------------------
+Para habilidades activas:
+inputRaw = caster.getAttack() + skill.getEffectiveDamageFlat()
+// Aplica variación aleatoria, chequeo de ejecución y chequeo de crítico idéntico a Fase 1.
+// Luego procesa mitigación completa con calculateMitigatedDamage(caster, target, enhancedDamage, isPhysical).
+
+
+================================================================================
+6. SISTEMA DE GOLPES MÚLTIPLES (MULTI-STRIKE & GHOST SLASHES)
+================================================================================
+
+El sistema simula golpes dobles y triples dinámicos sin desincronizar la animación principal.
+
+1. Tiradas de Activación:
+   numHits = 1
+   if (RandomRoll(attacker.getTripleStrikeChance())):
+       numHits = 3
+   else if (RandomRoll(attacker.getDoubleStrikeChance())):
+       numHits = 2
+
+2. Desfase Temporal y Secuencia:
+   - Impacto Principal (Hit 0):
+     Se ejecuta al alcanzar el frame clave de la animación (strikeDuration * delayFactor).
+     Tiene permitido aplicar Daño Verdadero (allowTrueDamage = true).
+   - Impacto Secundario (Ghost 1):
+     Se lanza con un retraso relativo de +0.03 segundos respecto al impacto principal.
+     Realiza su propia tirada independiente de acierto (tryToHit).
+     Tiene Daño Verdadero deshabilitado (allowTrueDamage = false) para balance.
+     Escalado visual y de daño de bonus hit (ej. escala 0.85x).
+   - Impacto Terciario (Ghost 2):
+     Se lanza con un retraso relativo de +0.12 segundos respecto al impacto principal.
+     Tirada independiente de acierto.
+
+
+================================================================================
+7. EFECTOS ON-HIT, ESTADOS ALTERADOS (CC) Y DAÑO EN EL TIEMPO (DoT)
+================================================================================
+
+Cada impacto exitoso con totalDamage > 0 desencadena secuencialmente:
+
+7.1 Robo de Vida y Maná (Lifesteal & Mana Steal):
+   healAmount = int(totalDamage * (attacker.getLifestealPercent() / 100.0))
+   if (healAmount > 0): attacker.heal(healAmount)
+
+   manaAmount = int(totalDamage * (attacker.getManaStealPercent() / 100.0))
+   if (manaAmount > 0): attacker.restoreMana(manaAmount)
+
+7.2 Espinas (Thorns):
+   thornsPct = defender.getThornsPercent()
+   if (thornsPct > 0.0 && !isPureTrueDamage):
+       rawThorns = int(totalDamage * (thornsPct / 100.0))
+       if (rawThorns > 0):
+           // El daño reflejado se mitiga con la armadura del atacante original
+           thornsRes = CombatCalculator::calculateMitigatedDamage(defender, attacker, rawThorns, true)
+           attacker.takeDamage(thornsRes.totalDamage, defender, false, false)
+
+7.3 Aturdimiento y Tenacidad (Stun & Tenacity):
+   if (RandomRoll(attacker.getStunChance())):
+       baseDuration = attacker.getStunDuration()
+       tenacity = defender.getTenacityPercent()
+       effectiveDuration = baseDuration * (1.0 - (tenacity / 100.0))
+       
+       if (effectiveDuration > 0.05): // Umbral mínimo de inmunidad
+           defender.applyStun(effectiveDuration)
+           // Durante el Stun: SpeedMultiplier = 0.0, AttackSpeedMultiplier = 0.0
+
+7.4 Sangrado Continuo (Bleed System sin Snapshotting):
+   El sangrado divide su daño en dos fuentes:
+   - bleedFlat: Daño plano por tick.
+   - bleedPercent: Daño basado en el ataque actual del atacante:
+     percentDamage = attacker.getAttack() * (attacker.getBleedPercent() / 100.0)
+
+   Al re-aplicarse:
+   - Se renuevan las duraciones (durationFlat y durationPercent).
+   - Se sobrescriben los valores con los stats ACTUALES del atacante. Esto previene
+     que un crítico o buff temporal se quede snapshotteado infinitamente.
+   - No se resetea el temporizador de tick (1.0 seg) para no retrasar el daño.
+
+   Tick de Sangrado (cada 1.0s):
+   totalTickRaw = flatDamage + percentDamage
+   res = calculateMitigatedDamage(source, victim, totalTickRaw, true)
+   victim.takeDamage(res.totalDamage, source)
+
+7.5 Ralentizaciones (Slow Movement & Slow Attack):
+   - Slow Move: Reduce la velocidad de traslación:
+     speed = baseSpeed * max(0.10, 1.0 - slowMovePercent / 100.0)
+   - Slow Attack: Reduce la frecuencia de animación/ataques:
+     atkSpeed = baseAtkSpeed * max(0.10, 1.0 - slowAttackPercent / 100.0)
+
+7.6 Ondas de Área de Efecto (AoE Waves):
+   Si attacker.getAoeRadius() > 1.0 y attacker.getAoeDamagePercent() > 0.0:
+   - Se genera una onda circular expansiva desde el objetivo principal a una velocidad de 1500 unidades/seg (o 15-20 m/s en 3D).
+   - Cada entidad hostil dentro del radio recibe:
+     rawAoe = totalDamagePrimary * (aoePercent / 100.0)
+     res = calculateMitigatedDamage(attacker, enemy, rawAoe, true)
+     enemy.takeDamage(res.totalDamage, attacker)
+
+
+================================================================================
+8. MECÁNICAS DEFENSIVAS ACTIVAS Y CONTRA-JUEGO
+================================================================================
+
+8.1 Esquiva con Marcos de Invulnerabilidad (Dash I-Frames):
+   - Al activar el Dash/Roll: Duración activa = 0.20 seg, Cooldown = 1.00 seg.
+   - Mientras isInvulnerable(entity) == true:
+     Cualquier daño entrante (excepto True Damage puro) se ignora por completo y genera feedback de "MISS" o "ESQUIVADO".
+
+8.2 Guardia / Bloqueo Activo (Shield Guard):
+   - Al mantener la postura de bloqueo:
+     * Reducción de velocidad de movimiento del 30% (SpeedMultiplier = 0.70).
+     * Incremento sustancial de BlockChance y BlockValue.
+
+8.3 Interrupción de Casteos y Castigo Crítico (Shield Slam):
+   - Si una entidad enemiga está en estado isCasting() o canalizando:
+     * El daño base de la habilidad de escudo se incrementa en +50% (multiplicador 1.5x por castigo).
+     * El casteo enemigo se cancela inmediatamente.
+     * Se aplica un Aturdimiento (Stun) garantizado de 1.5 segundos.
+     * Feedback flotante especial: "¡INTERRUMPIDO!".
+
+
+================================================================================
+9. FÍSICA DE RETROCESO POR MUERTE (DEATH KNOCKBACK PHYSICS)
+================================================================================
+
+Cuando una víctima muere por un impacto directo melee/físico, el impulso de vuelo se calcula usando los principios de Conservación de Cantidad de Movimiento y Colisión Inelástica:
+
+Fórmula: calculateDeathKnockbackMultiplier(killer, victim)
+
+1. Variables Físicas de Entrada:
+   killerWeight = max(1.0, killer.getWeightKg()) // ej. 80 Kg
+   victimWeight = max(1.0, victim.getWeightKg()) // ej. 60 Kg
+   killerStrength = max(1.0, killer.getAttack()) // Refleja la potencia de empuje
+
+2. Velocidad de Impacto con Rendimientos Decrecientes:
+   atkSpeed = max(0.1, killer.getAtkSpeed() * killer.getAttackSpeedMultiplier())
+   // La raíz cuadrada previene velocidades absurdas a cadencias elevadas
+   hittingVelocity = sqrt(atkSpeed) * 15.0 * KNOCKBACK_STRENGTH_FACTOR
+
+3. Fracción de Masa Involucrada en el Golpe:
+   // Un golpe estándar transmite ~10% del peso corporal, pero la Fuerza permite apoyar más peso
+   bodyFraction = 0.10 + (killerStrength * 0.002)
+   bodyFraction = clamp(bodyFraction, 0.10, 0.60) // Máximo 60% del peso corporal detrás del golpe
+   hittingMass = killerWeight * bodyFraction * KNOCKBACK_WEIGHT_FACTOR
+
+4. Cantidad de Movimiento Inicial (Momento: p = m * v):
+   initialMomentum = hittingMass * hittingVelocity
+
+5. Colisión Inelástica (Transmisión del impulso a la víctima):
+   finalVelocity = initialMomentum / (hittingMass + victimWeight)
+
+6. Atenuación y Compresión Logarítmica:
+   attenuationConstant = 0.5
+   normalizedVelocity = (finalVelocity / 4.0) * attenuationConstant
+   // Curva logarítmica para estabilidad extrema frente a números gigantes
+   finalMultiplier = log10(1.0 + normalizedVelocity) * 2.5
+   
+   return clamp(finalMultiplier, 0.10, 4.0) // Clamp seguro para el motor físico 3D
+
+
+================================================================================
+10. SISTEMAS DE PROGRESIÓN Y MEJORA DE EQUIPO
+================================================================================
+
+10.1 Curva Exponencial de Experiencia y Subida de Nivel:
+   - Experiencia para siguiente nivel:
+     nextLevelExp = static_cast<long long>(currentNextLevelExp * EXP_CURVE_MULTIPLIER)
+     (EXP_CURVE_MULTIPLIER = 1.10)
+   - Al subir de nivel:
+     mStrength += STAT_GAIN_ON_LEVEL_UP (ej. +10 a todos los atributos primarios)
+     mAgility += STAT_GAIN_ON_LEVEL_UP
+     mIntelligence += STAT_GAIN_ON_LEVEL_UP
+     mVitality += STAT_GAIN_ON_LEVEL_UP
+     Vida y Maná se restauran al 100%.
+   - Penalización de Muerte:
+     Se pierde el 10% del total de experiencia requerida para el nivel actual.
+
+10.2 Fortificación de Equipo (+1, +2, ...):
+   - Al subir un nivel de fortificación:
+     * Armas: stats.physicalDamage = ceil(stats.physicalDamage * 1.10) (+10% compuesto)
+     * Armaduras: stats.defense = ceil(stats.defense * 1.10) (+10% compuesto)
+     * Valor del ítem: value = ceil(value * 1.50)
+
+10.3 Sistema de Cultivo de Ítems (Item Cultivation):
+   - Permite designar un ítem equipado como "En Cultivo".
+   - Al matar monstruos, el 100% de la XP puede desviarse al ítem cultivado.
+   - Al subir de nivel de cultivo:
+     growthPerLevel = 6.0 / selectedStats.size()
+     totalGrowth = growthPerLevel * item.cultivoLevel
+     * Fuerza/Agi/Int/Vit: +round(totalGrowth * 1.5)
+     * Daño Físico: +round(totalGrowth * 2.0)
+     * Defensa: +round(totalGrowth * 1.8)
+     * HP Bonus: +round(totalGrowth * 15.0)
+     * MP Bonus: +round(totalGrowth * 12.0)
+     * Prob. Crítico: +totalGrowth * 0.4%
+     * Daño Crítico: +totalGrowth * 1.2%
+     * Robo de Vida: +totalGrowth * 0.3%
+     * Reducción de Enfriamiento: +totalGrowth * 0.3%
+     * % Ataque Físico: +totalGrowth * 0.5%
+     * % Defensa: +totalGrowth * 0.5%
+
+10.4 Engarce de Gemas (Sockets):
+   - Las gemas otorgan bonos planos o multiplicadores porcentuales (attackPercent, defensePercent, hpPercent, etc.)
+   - Se acumulan limpiamente en el pipeline de recalculateStats().
+
+
+================================================================================
+11. GUÍA DE ADAPTACIÓN PARA UN MMORPG 3D (ARQUITECTURA CLIENTE-SERVIDOR)
+================================================================================
+
+1. Separación Servidor Autoritativo vs Cliente:
+   - Servidor: Ejecuta tryToHit(), calculateDamage() y calculateMitigatedDamage(). Aplica estados alterados, vida y maná reales.
+   - Cliente: Ejecuta predicción local de animaciones y feedback visual/sonoro al recibir paquetes del servidor.
+
+2. Detección Espacial en 3D:
+   - Ataques Melee: En lugar de distancia 2D (diff.x^2 + diff.y^2), utilizar un Cono de Ataque (Dot Product entre el vector Forward del jugador y la dirección al objetivo) combinado con SphereCast o OverlapSphere en un radio de 2.0 a 3.5 metros.
+   - Tab-Targeting: Raycast hacia la cámara o cono frontal con rango máximo de 30-40 metros.
+   - Ondas AoE: Esferas crecientes en 3D que consultan la estructura espacial (Octree o Grid Espacial 3D).
+
+3. Sincronización en Red Recomendada (Estructura de Paquetes):
+   - struct DamagePacket {
+       uint64_t attackerId;
+       uint64_t targetId;
+       int damageAmount;
+       uint8_t flags; // Bit 0: IsCrit, Bit 1: IsBlocked, Bit 2: IsTrueDamage, Bit 3: IsMiss
+       float knockbackDirX, knockbackDirY, knockbackDirZ;
+       float knockbackForce;
+     };
+
+================================================================================
+FIN DEL DOCUMENTO TÉCNICO
+================================================================================
