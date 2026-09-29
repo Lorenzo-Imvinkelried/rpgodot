@@ -225,31 +225,69 @@ func restore_mana(amount: int) -> void:
 	current_mp = mini(max_mp, current_mp + amount)
 
 # ==============================================================================
-# Métodos de fábrica para instanciar arquetipos configurados en JSON
+# Métodos de fábrica e importación desde Diccionario / JSON
 # ==============================================================================
+
+## Carga atributos y modificadores desde un Dictionary (por ejemplo, proveniente de JSON).
+func load_from_dictionary(dict: Dictionary) -> void:
+	if dict.has("character_name"): character_name = str(dict["character_name"])
+	if dict.has("level"): level = int(dict["level"])
+	if dict.has("weight_kg"): weight_kg = float(dict["weight_kg"])
+	if dict.has("base_str"): base_str = int(dict["base_str"])
+	if dict.has("base_agi"): base_agi = int(dict["base_agi"])
+	if dict.has("base_int"): base_int = int(dict["base_int"])
+	if dict.has("base_vit"): base_vit = int(dict["base_vit"])
+	if dict.has("base_attack"): base_attack = float(dict["base_attack"])
+	if dict.has("base_defense"): base_defense = float(dict["base_defense"])
+	if dict.has("base_max_hp"): base_max_hp = float(dict["base_max_hp"])
+	if dict.has("base_max_mp"): base_max_mp = float(dict["base_max_mp"])
+	if dict.has("base_accuracy"): base_accuracy = float(dict["base_accuracy"])
+	if dict.has("base_evasion"): base_evasion = float(dict["base_evasion"])
+	if dict.has("base_crit_chance"): base_crit_chance = float(dict["base_crit_chance"])
+	if dict.has("base_crit_damage"): base_crit_damage = float(dict["base_crit_damage"])
+	if dict.has("base_atk_speed"): base_atk_speed = float(dict["base_atk_speed"])
+	if dict.has("armor_pen_flat"): armor_pen_flat = float(dict["armor_pen_flat"])
+	if dict.has("armor_pen_percent"): armor_pen_percent = float(dict["armor_pen_percent"])
+	if dict.has("true_damage_percent"): true_damage_percent = float(dict["true_damage_percent"])
+	if dict.has("execute_damage_multiplier"): execute_damage_multiplier = float(dict["execute_damage_multiplier"])
+	if dict.has("execute_threshold_factor"): execute_threshold_factor = float(dict["execute_threshold_factor"])
+	if dict.has("enemy_max_hp_damage_percent"): enemy_max_hp_damage_percent = float(dict["enemy_max_hp_damage_percent"])
+	if dict.has("physical_damage_bonus"): physical_damage_bonus = float(dict["physical_damage_bonus"])
+	if dict.has("block_chance"): block_chance = float(dict["block_chance"])
+	if dict.has("block_value_percent"): block_value_percent = float(dict["block_value_percent"])
+	if dict.has("thorns_percent"): thorns_percent = float(dict["thorns_percent"])
+	if dict.has("tenacity_percent"): tenacity_percent = float(dict["tenacity_percent"])
+	if dict.has("damage_reduction_percent"): damage_reduction_percent = float(dict["damage_reduction_percent"])
+	if dict.has("crit_avoidance_percent"): crit_avoidance_percent = float(dict["crit_avoidance_percent"])
+	if dict.has("anti_armor_pen_percent"): anti_armor_pen_percent = float(dict["anti_armor_pen_percent"])
+	if dict.has("anti_armor_pen_flat"): anti_armor_pen_flat = float(dict["anti_armor_pen_flat"])
+	if dict.has("lifesteal_percent"): lifesteal_percent = float(dict["lifesteal_percent"])
+	if dict.has("mana_steal_percent"): mana_steal_percent = float(dict["mana_steal_percent"])
+	if dict.has("move_speed"): move_speed = float(dict["move_speed"])
+	if dict.has("cooldown_reduction"): cooldown_reduction = float(dict["cooldown_reduction"])
+	if dict.has("double_strike_chance"): double_strike_chance = float(dict["double_strike_chance"])
+	if dict.has("triple_strike_chance"): triple_strike_chance = float(dict["triple_strike_chance"])
+	recalculate_stats(true)
+
+## Crea una instancia de CharacterStats inicializada desde una sección específica de combat_config.json
+static func create_from_config(category: String, default_name: String = "") -> CharacterStats:
+	var stats := CharacterStats.new()
+	if not default_name.is_empty():
+		stats.character_name = default_name
+	var cfg = GameConfig.load_json(GameConfig.PATH_COMBAT)
+	if cfg.has(category) and cfg[category] is Dictionary:
+		stats.load_from_dictionary(cfg[category])
+		if not default_name.is_empty() and not cfg[category].has("character_name"):
+			stats.character_name = default_name
+	else:
+		stats.recalculate_stats(true)
+	return stats
 
 ## Crea una instancia de CharacterStats inicializada con los valores por defecto del jugador desde config/combat_config.json
 static func create_player_default() -> CharacterStats:
-	var stats := CharacterStats.new()
-	stats.character_name = "Player"
-	stats.level = int(GameConfig.get_combat_value("player_default_stats", "level", 1))
-	stats.base_str = int(GameConfig.get_combat_value("player_default_stats", "base_str", 10))
-	stats.base_agi = int(GameConfig.get_combat_value("player_default_stats", "base_agi", 10))
-	stats.base_int = int(GameConfig.get_combat_value("player_default_stats", "base_int", 10))
-	stats.base_vit = int(GameConfig.get_combat_value("player_default_stats", "base_vit", 10))
-	stats.recalculate_stats(true)
-	return stats
+	return create_from_config("player_default_stats", "Player")
 
 ## Crea una instancia de CharacterStats inicializada con los valores por defecto del dummy de práctica desde config/combat_config.json
 static func create_dummy_default() -> CharacterStats:
-	var stats := CharacterStats.new()
-	stats.character_name = "TrainingDummy"
-	stats.level = int(GameConfig.get_combat_value("dummy_default_stats", "level", 1))
-	stats.base_str = int(GameConfig.get_combat_value("dummy_default_stats", "base_str", 0))
-	stats.base_agi = int(GameConfig.get_combat_value("dummy_default_stats", "base_agi", 5))
-	stats.base_int = int(GameConfig.get_combat_value("dummy_default_stats", "base_int", 0))
-	stats.base_vit = int(GameConfig.get_combat_value("dummy_default_stats", "base_vit", 10))
-	stats.block_chance = float(GameConfig.get_combat_value("dummy_default_stats", "block_chance", 10.0))
-	stats.block_value_percent = float(GameConfig.get_combat_value("dummy_default_stats", "block_value_percent", 50.0))
-	stats.recalculate_stats(true)
-	return stats
+	return create_from_config("dummy_default_stats", "TrainingDummy")
+

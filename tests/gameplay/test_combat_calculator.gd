@@ -131,7 +131,8 @@ func _init() -> void:
 		failures += 1
 
 	var dummy_cfg_stats := CharacterStats.create_dummy_default()
-	if dummy_cfg_stats.character_name != "TrainingDummy" or dummy_cfg_stats.block_chance != 10.0:
+	var expected_block := float(GameConfig.get_combat_value("dummy_default_stats", "block_chance", 15.0))
+	if dummy_cfg_stats.character_name != "TrainingDummy" or dummy_cfg_stats.block_chance != expected_block:
 		printerr("FALLO: create_dummy_default no cargó los datos esperados de combat_config.json")
 		failures += 1
 
