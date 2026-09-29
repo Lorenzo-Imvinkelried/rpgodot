@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://c6v2r8g7pm4yk"]
+[gd_scene load_steps=10 format=3 uid="uid://c6v2r8g7pm4yk"]
 
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="1_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/player_frame.tscn" id="2_pf"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/exp_bar.tscn" id="5_eb"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/cast_bar.tscn" id="6_cb"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/quick_buttons.tscn" id="7_qb"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory/inventory_panel.tscn" id="8_inv"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0.10, 0.12, 0.16, 0.88)
@@ -71,6 +72,22 @@ offset_left = -106.0
 offset_top = -58.0
 offset_right = -14.0
 offset_bottom = -16.0
+
+[node name="InventoryPanel" parent="." instance=ExtResource("8_inv")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -145.0
+offset_right = -20.0
+offset_bottom = 145.0
+grow_horizontal = 0
+grow_vertical = 2
 
 [node name="NetworkPanel" type="MarginContainer" parent="."]
 layout_mode = 1

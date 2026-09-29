@@ -1,0 +1,140 @@
+[gd_scene load_steps=5 format=3 uid="uid://b8inv_panel9281"]
+
+[ext_resource type="Script" path="res://scripts/ui/inventory/inventory_panel.gd" id="1_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/item_tooltip.tscn" id="2_tt"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.09, 0.11, 0.15, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.32, 0.44, 0.95)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_size = 10
+shadow_color = Color(0, 0, 0, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title"]
+bg_color = Color(0.14, 0.16, 0.22, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+
+[node name="InventoryPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(260, 290)
+offset_right = 260.0
+offset_bottom = 290.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+script = ExtResource("1_panel")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TitleBar" type="PanelContainer" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_title")
+
+[node name="Margin" type="MarginContainer" parent="VBox/TitleBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_right = 8
+
+[node name="HBox" type="HBoxContainer" parent="VBox/TitleBar/Margin"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="VBox/TitleBar/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "🎒 Mochila (20)"
+
+[node name="CloseButton" type="Button" parent="VBox/TitleBar/Margin/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(22, 22)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "✕"
+
+[node name="BodyMargin" type="MarginContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 6
+
+[node name="VBoxBody" type="VBoxContainer" parent="VBox/BodyMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SlotsGrid" type="GridContainer" parent="VBox/BodyMargin/VBoxBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 5
+
+[node name="HSeparator" type="HSeparator" parent="VBox/BodyMargin/VBoxBody"]
+layout_mode = 2
+
+[node name="CurrencyHBox" type="HBoxContainer" parent="VBox/BodyMargin/VBoxBody"]
+layout_mode = 2
+alignment = 2
+
+[node name="GoldIcon" type="Label" parent="VBox/BodyMargin/VBoxBody/CurrencyHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+text = "🟡"
+
+[node name="GoldLabel" type="Label" parent="VBox/BodyMargin/VBoxBody/CurrencyHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+text = "0"
+
+[node name="VSeparator1" type="VSeparator" parent="VBox/BodyMargin/VBoxBody/CurrencyHBox"]
+layout_mode = 2
+
+[node name="SilverIcon" type="Label" parent="VBox/BodyMargin/VBoxBody/CurrencyHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.95, 1)
+theme_override_font_sizes/font_size = 11
+text = "⚪"
+
+[node name="SilverLabel" type="Label" parent="VBox/BodyMargin/VBoxBody/CurrencyHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.88, 0.95, 1)
+theme_override_font_sizes/font_size = 11
+text = "0"
+
+[node name="VSeparator2" type="VSeparator" parent="VBox/BodyMargin/VBoxBody/CurrencyHBox"]
+layout_mode = 2
+
+[node name="BronzeIcon" type="Label" parent="VBox/BodyMargin/VBoxBody/CurrencyHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.55, 0.25, 1)
+theme_override_font_sizes/font_size = 11
+text = "🟤"
+
+[node name="BronzeLabel" type="Label" parent="VBox/BodyMargin/VBoxBody/CurrencyHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.55, 0.25, 1)
+theme_override_font_sizes/font_size = 11
+text = "0"
+
+[node name="ItemTooltip" parent="." instance=ExtResource("2_tt")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2

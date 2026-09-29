@@ -15,6 +15,7 @@ const DEFAULT_CONFIG = preload("res://resources/player/default_player_config.tre
 @onready var synchronizer: MultiplayerSynchronizer = $MultiplayerSynchronizer
 @onready var combat_controller: CombatController = get_node_or_null("CombatController")
 @onready var combat_target: CombatTarget = get_node_or_null("CombatTarget")
+@onready var inventory_controller: InventoryController = get_node_or_null("InventoryController")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var _was_forward_pressed: bool = false
@@ -46,6 +47,19 @@ func _ready() -> void:
 
 	if combat_target:
 		combat_target.died.connect(_on_player_died)
+
+	if inventory_controller == null:
+		inventory_controller = InventoryController.new()
+		inventory_controller.name = "InventoryController"
+		add_child(inventory_controller)
+		_setup_starter_inventory()
+
+func _setup_starter_inventory() -> void:
+	if inventory_controller:
+		inventory_controller.add_item(ItemData.create_potion("Poción de Salud", 60.0, 0.0, 10))
+		inventory_controller.add_item(ItemData.create_potion("Poción de Maná", 0.0, 40.0, 5))
+		inventory_controller.add_item(ItemData.create_weapon("Espada Rúnica", 45, 7, ItemData.ItemRarity.RARE))
+		inventory_controller.add_item(ItemData.create_armor("Escudo de Roble", 25, ItemData.EquipmentSlot.OFF_HAND, 0, ItemData.ItemRarity.UNCOMMON))
 
 func _on_player_died() -> void:
 	if not is_multiplayer_authority():

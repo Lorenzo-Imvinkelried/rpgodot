@@ -13,6 +13,7 @@ signal disconnect_requested
 @onready var cast_bar: CastBar = %CastBar
 @onready var exp_bar: ExpBar = %ExpBar
 @onready var quick_buttons: QuickButtons = %QuickButtons
+@onready var inventory_panel: InventoryPanel = %InventoryPanel
 @onready var status_label: Label = %HUDStatus
 @onready var disconnect_button: Button = %DisconnectButton
 
@@ -22,6 +23,16 @@ var _last_synced_target: Node = null
 func _ready() -> void:
 	if disconnect_button:
 		disconnect_button.pressed.connect(_on_disconnect_pressed)
+
+	if quick_buttons:
+		quick_buttons.inventory_toggle_requested.connect(_on_inventory_toggle_requested)
+
+	if UIManager.instance:
+		UIManager.instance.inventory_toggle_requested.connect(_on_inventory_toggle_requested)
+
+	if DragDropManager.instance == null:
+		var ddm := DragDropManager.new()
+		add_child(ddm)
 
 func _process(_delta: float) -> void:
 	if _bound_player == null:
@@ -39,6 +50,12 @@ func bind_player(player_node: Node) -> void:
 		player_frame.bind_player(_bound_player)
 	if hotbar:
 		hotbar.bind_player(_bound_player)
+
+	if inventory_panel:
+		var inv_ctrl := _bound_player.get_node_or_null("InventoryController") as InventoryController
+		var tgt_ctrl := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
+		if inv_ctrl:
+			inventory_panel.bind_inventory(inv_ctrl, tgt_ctrl)
 
 	var target_comp := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
 	if target_comp:
@@ -84,3 +101,8 @@ func update_status(text: String) -> void:
 
 func _on_disconnect_pressed() -> void:
 	disconnect_requested.emit()
+
+func _on_inventory_toggle_requested() -> void:
+	if inventory_panel:
+		inventory_panel.toggle_panel()
+
