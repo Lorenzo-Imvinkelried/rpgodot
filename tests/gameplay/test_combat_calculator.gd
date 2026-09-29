@@ -162,9 +162,34 @@ func _init() -> void:
 
 	print("[OK] Prueba 9: Mitigación con 200 de defensa verificada exitosamente (Daño recibido: ", combat_res.total_damage, " vs salud inicial ", initial_dummy_hp, ").")
 
+	# 10. Prueba de Multi-Strike (Fase 3: Golpes Dobles y Triples)
+	var multi_attacker := CharacterStats.new()
+	multi_attacker.base_str = 10
+	multi_attacker.double_strike_chance = 100.0
+	multi_attacker.triple_strike_chance = 0.0
+	multi_attacker.recalculate_stats(true)
+
+	var multi_target := CharacterStats.new()
+	multi_target.base_vit = 0
+	multi_target.base_defense = 0.0
+	multi_target.recalculate_stats(true)
+
+	var hit_0 := CombatCalculator.calculate_damage(multi_attacker, multi_target, true, 0.0, 0)
+	var hit_1 := CombatCalculator.calculate_damage(multi_attacker, multi_target, false, 0.0, 0)
+	var scaled_hit_1 := maxi(1, int(round(float(hit_1.total_damage) * 0.85)))
+
+	if hit_0.total_damage != 30:
+		printerr("FALLO: Hit 0 principal debería ser 30, fue: ", hit_0.total_damage)
+		failures += 1
+	if scaled_hit_1 != 26:
+		printerr("FALLO: Ghost 1 secundario escalado debería ser 26 (30 * 0.85), fue: ", scaled_hit_1)
+		failures += 1
+
+	print("[OK] Prueba 10: Multi-Strike (Hit 0: ", hit_0.total_damage, " + Ghost 1 escalado 0.85x: ", scaled_hit_1, ") verificado exitosamente.")
+
 	# Conclusión
 	if failures == 0:
-		print("--- TODAS LAS PRUEBAS (9/9) PASARON EXITOSAMENTE ---")
+		print("--- TODAS LAS PRUEBAS (10/10) PASARON EXITOSAMENTE ---")
 		quit(0)
 	else:
 		printerr("--- HUBO ", failures, " FALLOS EN LAS PRUEBAS ---")

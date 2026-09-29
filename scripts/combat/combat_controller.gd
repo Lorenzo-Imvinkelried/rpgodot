@@ -1,11 +1,13 @@
 class_name CombatController
 extends Node
 
-## Responsabilidad: Máquina de estados de combate, aproximación automática, cadencia de ataques y coordinación de impactos con CombatCalculator.
+## Responsabilidad: Máquina de estados de combate, aproximación automática, cadencia de ataques
+## y coordinación de impactos individuales y multi-strike (Ghost Slashes) con CombatCalculator.
 
 signal target_acquired(target: Node3D)
 signal target_lost()
 signal attack_executed(target: Node3D, damage: float)
+signal multi_strike_triggered(num_hits: int)
 
 enum State { IDLE, APPROACHING, ATTACKING }
 
@@ -83,14 +85,18 @@ func get_approach_direction() -> Vector3:
 func update_combat(delta: float, visuals: PlayerVisuals) -> void:
 	_time_since_last_attack += delta
 
-	# Procesar impactos pendientes programados por la animación
+	# Procesar impactos pendientes (tanto principales como ghost slashes)
 	for i in range(_pending_impacts.size() - 1, -1, -1):
 		_pending_impacts[i]["time_left"] -= delta
 		if _pending_impacts[i]["time_left"] <= 0.0:
-			var tgt: Node3D = _pending_impacts[i]["target"]
+			var info: Dictionary = _pending_impacts[i]
 			_pending_impacts.remove_at(i)
+			var tgt: Node3D = info.get("target")
 			if is_instance_valid(tgt):
-				_apply_impact(tgt)
+				var hit_idx: int = int(info.get("hit_index", 0))
+				var allow_td: bool = bool(info.get("allow_true_damage", true))
+				var dmg_scale: float = float(info.get("damage_scale", 1.0))
+				_apply_impact(tgt, hit_idx, allow_td, dmg_scale)
 
 	if not is_instance_valid(current_target):
 		clear_target()
@@ -150,26 +156,86 @@ func _execute_attack(visuals: PlayerVisuals) -> void:
 	else:
 		rpc_play_attack(speed_scale)
 
-	# El retardo de impacto se escala en la misma proporción que la velocidad de la animación
+	# El retardo del impacto principal se escala con la velocidad de la animación
 	var base_delay: float = combat_config.impact_delay if combat_config else 0.58
 	var real_delay: float = base_delay / speed_scale
+
+	# Tiradas de Multi-Strike (Sección 6: Multi-Strike & Ghost Slashes)
+	var num_hits: int = 1
+	var triple_chance: float = current_stats.triple_strike_chance if current_stats else 0.0
+	var double_chance: float = current_stats.double_strike_chance if current_stats else 0.0
+
+	if randf() * 100.0 <= triple_chance:
+		num_hits = 3
+	elif randf() * 100.0 <= double_chance:
+		num_hits = 2
+
+	if num_hits > 1:
+		multi_strike_triggered.emit(num_hits)
+
+	# 1. Impacto Principal (Hit 0): frame clave de animación, Daño Verdadero permitido
 	_pending_impacts.append({
 		"target": current_target,
-		"time_left": real_delay
+		"time_left": real_delay,
+		"hit_index": 0,
+		"allow_true_damage": true,
+		"damage_scale": 1.0
 	})
 
-func _apply_impact(target: Node3D) -> void:
+	var ghost_delay_1 := float(GameConfig.get_combat_value("multi_strike", "ghost_delay_1", 0.03))
+	var ghost_delay_2 := float(GameConfig.get_combat_value("multi_strike", "ghost_delay_2", 0.12))
+	var ghost_scale := float(GameConfig.get_combat_value("multi_strike", "ghost_damage_scale", 0.85))
+
+	# 2. Impacto Secundario (Ghost 1): +0.03s, sin Daño Verdadero, escala de daño bonus
+	if num_hits >= 2:
+		_pending_impacts.append({
+			"target": current_target,
+			"time_left": real_delay + ghost_delay_1,
+			"hit_index": 1,
+			"allow_true_damage": false,
+			"damage_scale": ghost_scale
+		})
+
+	# 3. Impacto Terciario (Ghost 2): +0.12s, sin Daño Verdadero, escala de daño bonus
+	if num_hits >= 3:
+		_pending_impacts.append({
+			"target": current_target,
+			"time_left": real_delay + ghost_delay_2,
+			"hit_index": 2,
+			"allow_true_damage": false,
+			"damage_scale": ghost_scale
+		})
+
+func _apply_impact(target: Node3D, hit_index: int = 0, allow_true_damage: bool = true, damage_scale: float = 1.0) -> void:
 	var offset_y := float(GameConfig.get_combat_value("combat", "impact_height_offset", 1.1))
 	var hit_pos := target.global_position + Vector3(0, offset_y, 0)
-	var target_path := target.get_path()
 
+	# Ligera variación espacial para impactos secundarios para evitar que números flotantes se solapen
+	if hit_index > 0:
+		hit_pos += Vector3(randf_range(-0.18, 0.18), randf_range(-0.06, 0.12), randf_range(-0.18, 0.18))
+
+	var target_path := target.get_path()
 	var target_comp := _find_combat_target(target)
 	var defender_stats: CharacterStats = target_comp.get_stats() if target_comp else null
 	var attacker_stats: CharacterStats = get_stats()
 
-	# Resolución mediante CombatCalculator
-	var result := CombatCalculator.perform_attack(attacker_stats, defender_stats)
+	# Cada impacto realiza su propia tirada independiente de acierto
+	if not CombatCalculator.try_to_hit(attacker_stats, defender_stats):
+		var miss_res := DamageResult.new()
+		miss_res.is_miss = true
+		_broadcast_combat_result(hit_pos, target_path, miss_res)
+		return
 
+	# Resolución de daño mediante CombatCalculator
+	var result := CombatCalculator.calculate_damage(attacker_stats, defender_stats, allow_true_damage, 0.0, -1)
+	if damage_scale != 1.0:
+		result.total_damage = maxi(1, int(round(float(result.total_damage) * damage_scale)))
+		result.physical_damage = maxi(0, int(round(float(result.physical_damage) * damage_scale)))
+		result.true_damage = maxi(0, int(round(float(result.true_damage) * damage_scale)))
+
+	_broadcast_combat_result(hit_pos, target_path, result)
+
+func _broadcast_combat_result(hit_pos: Vector3, target_path: NodePath, result: DamageResult) -> void:
 	if _can_broadcast_rpc():
 		rpc("rpc_apply_combat_impact", hit_pos, target_path, result.total_damage, result.physical_damage, result.true_damage, result.is_crit, result.is_blocked, result.is_miss)
 	else:
