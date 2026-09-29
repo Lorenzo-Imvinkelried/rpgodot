@@ -165,6 +165,8 @@ func _init() -> void:
 	# 10. Prueba de Multi-Strike (Fase 3: Golpes Dobles y Triples)
 	var multi_attacker := CharacterStats.new()
 	multi_attacker.base_str = 10
+	multi_attacker.base_agi = 0
+	multi_attacker.base_crit_chance = 0.0
 	multi_attacker.double_strike_chance = 100.0
 	multi_attacker.triple_strike_chance = 0.0
 	multi_attacker.recalculate_stats(true)

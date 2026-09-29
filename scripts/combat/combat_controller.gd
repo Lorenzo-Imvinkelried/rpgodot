@@ -195,6 +195,10 @@ func _execute_attack(visuals: PlayerVisuals) -> void:
 			"allow_true_damage": false,
 			"damage_scale": ghost_scale
 		})
+		if _can_broadcast_rpc():
+			rpc("rpc_spawn_ghost_slash", speed_scale, 1)
+		else:
+			rpc_spawn_ghost_slash(speed_scale, 1)
 
 	# 3. Impacto Terciario (Ghost 2): +0.12s, sin Daño Verdadero, escala de daño bonus
 	if num_hits >= 3:
@@ -205,6 +209,20 @@ func _execute_attack(visuals: PlayerVisuals) -> void:
 			"allow_true_damage": false,
 			"damage_scale": ghost_scale
 		})
+		if _can_broadcast_rpc():
+			rpc("rpc_spawn_ghost_slash", speed_scale, 2)
+		else:
+			rpc_spawn_ghost_slash(speed_scale, 2)
+
+## RPC sincronizado para que todos los clientes vean el clon fantasma del golpe adicional.
+@rpc("any_peer", "call_local", "reliable")
+func rpc_spawn_ghost_slash(speed_scale: float = 1.0, hit_index: int = 1) -> void:
+	if _parent_body == null:
+		return
+	var visuals := _parent_body.get_node_or_null("Visuals") as PlayerVisuals
+	if visuals:
+		visuals.spawn_ghost_slash(speed_scale, hit_index)
+
 
 func _apply_impact(target: Node3D, hit_index: int = 0, allow_true_damage: bool = true, damage_scale: float = 1.0) -> void:
 	var offset_y := float(GameConfig.get_combat_value("combat", "impact_height_offset", 1.1))

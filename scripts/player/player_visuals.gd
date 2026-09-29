@@ -16,6 +16,7 @@ const KEYWORDS_ATTACK: Array[String] = ["slash", "attack", "punch", "strike", "h
 
 const StrideAnalyzerScript = preload("res://scripts/player/stride_analyzer.gd")
 const DEFAULT_ATTACK_ANIM = preload("res://resources/combat/anim_attack.res")
+const GhostSlashFXScript = preload("res://scripts/combat/ghost_slash_fx.gd")
 
 @onready var health_bar: HealthBar3D = get_node_or_null("HealthBar3D")
 @onready var label: Label3D = get_node_or_null("Label3D")
@@ -82,6 +83,13 @@ func play_attack(custom_speed_scale: float = 1.0) -> void:
 	# Adaptar el tiempo de mezcla para ataques rápidos para no recortar el inicio del golpe
 	var blend_time: float = clampf(0.08 / custom_speed_scale, 0.01, ANIM_BLEND_TIME)
 	anim_player.play(_anim_attack, blend_time)
+
+## Instancia un clon fantasma translúcido que ejecuta un tajo rápido adicional (Multi-Strike)
+func spawn_ghost_slash(base_speed_scale: float = 1.0, hit_index: int = 1) -> void:
+	if character_model == null:
+		return
+	GhostSlashFXScript.create(character_model, global_transform, hit_index, base_speed_scale)
+
 
 
 func update_animation(is_moving: bool, current_speed: float = 0.0) -> void:
