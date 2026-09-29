@@ -3,8 +3,9 @@ extends Resource
 
 ## Responsabilidad: Almacena atributos primarios, secundarios, bonos de equipo y calcula
 ## de forma determinista las estadísticas derivadas de una entidad según las reglas de combate.
+## Permite sobreescribir escalados y valores por defecto mediante config/combat_config.json.
 
-# --- Constantes de balance y escalado ---
+# --- Constantes de balance y escalado por defecto ---
 const HP_PER_VIT: float = 20.0
 const DEF_PER_VIT: float = 2.0
 const MP_PER_INT: float = 20.0
@@ -147,8 +148,17 @@ func _init() -> void:
 	recalculate_stats(true)
 
 ## Recalcula deterministamente todas las estadísticas secundarias a partir de atributos y modificadores.
+## Consulta config/combat_config.json para constantes de escalado si existen.
 ## Si reset_current_vitals es true, restablece vida y maná a su valor máximo.
 func recalculate_stats(reset_current_vitals: bool = false) -> void:
+	# Factores de escalado (con fallback a constantes base)
+	var hp_scale: float = float(GameConfig.get_combat_value("stat_scaling", "hp_per_vit", HP_PER_VIT))
+	var def_scale: float = float(GameConfig.get_combat_value("stat_scaling", "def_per_vit", DEF_PER_VIT))
+	var mp_scale: float = float(GameConfig.get_combat_value("stat_scaling", "mp_per_int", MP_PER_INT))
+	var atk_scale: float = float(GameConfig.get_combat_value("stat_scaling", "atk_per_str", ATK_PER_STR))
+	var atk_speed_agi_scale: float = float(GameConfig.get_combat_value("stat_scaling", "atk_speed_per_agi", ATK_SPEED_PER_AGI))
+	var crit_agi_scale: float = float(GameConfig.get_combat_value("stat_scaling", "crit_per_agi", CRIT_PER_AGI))
+
 	# 1. Totales de atributos con bonos porcentuales de gemas/equipo
 	total_str = (float(base_str) + float(bonus_str) + float(buff_str)) * (1.0 + equip_str_percent / 100.0)
 	total_agi = (float(base_agi) + float(bonus_agi) + float(buff_agi)) * (1.0 + equip_agi_percent / 100.0)
@@ -156,22 +166,22 @@ func recalculate_stats(reset_current_vitals: bool = false) -> void:
 	total_vit = (float(base_vit) + float(bonus_vit) + float(buff_vit)) * (1.0 + equip_vit_percent / 100.0)
 
 	# 2. Puntos de Vida Máximos (Max HP)
-	var raw_max_hp: float = (total_vit * HP_PER_VIT) + base_max_hp + equip_hp_bonus + buff_hp
+	var raw_max_hp: float = (total_vit * hp_scale) + base_max_hp + equip_hp_bonus + buff_hp
 	raw_max_hp *= (1.0 + equip_hp_percent / 100.0)
 	max_hp = maxi(1, int(round(raw_max_hp)))
 
 	# 3. Defensa Física (Defense)
-	var raw_def: float = (total_vit * DEF_PER_VIT) + base_defense + equip_defense + buff_def
+	var raw_def: float = (total_vit * def_scale) + base_defense + equip_defense + buff_def
 	raw_def *= (1.0 + equip_defense_percent / 100.0)
 	defense = maxi(0, int(round(raw_def)))
 
 	# 4. Puntos de Maná Máximos (Max MP)
-	var raw_max_mp: float = (total_int * MP_PER_INT) + base_max_mp + equip_mp_bonus + buff_mp
+	var raw_max_mp: float = (total_int * mp_scale) + base_max_mp + equip_mp_bonus + buff_mp
 	raw_max_mp *= (1.0 + equip_mp_percent / 100.0)
 	max_mp = maxi(0, int(round(raw_max_mp)))
 
 	# 5. Poder de Ataque (Attack)
-	var raw_atk: float = (total_str * ATK_PER_STR) + base_attack + equip_attack + buff_atk
+	var raw_atk: float = (total_str * atk_scale) + base_attack + equip_attack + buff_atk
 	raw_atk *= (1.0 + equip_attack_percent / 100.0)
 	attack = maxi(0, int(round(raw_atk)))
 
@@ -181,12 +191,12 @@ func recalculate_stats(reset_current_vitals: bool = false) -> void:
 
 	# 7. Probabilidad y Daño Crítico
 	var agi_units: float = total_agi / 10.0
-	var raw_crit_chance: float = base_crit_chance + equip_crit_chance + (agi_units * 1.0) + buff_crit_chance
+	var raw_crit_chance: float = base_crit_chance + equip_crit_chance + (agi_units * (crit_agi_scale * 10.0)) + buff_crit_chance
 	crit_chance = clampf(raw_crit_chance, 0.0, 100.0)
 	crit_damage = maxf(0.0, base_crit_damage + equip_crit_damage + buff_crit_damage)
 
 	# 8. Velocidad de Ataque
-	attack_speed = maxf(0.05, base_atk_speed + equip_atk_speed + (agi_units * 0.10) + buff_atk_speed)
+	attack_speed = maxf(0.05, base_atk_speed + equip_atk_speed + (agi_units * (atk_speed_agi_scale * 10.0)) + buff_atk_speed)
 
 	# 9. Ajuste de vitales actuales
 	if reset_current_vitals:
@@ -213,3 +223,33 @@ func consume_mana(amount: int) -> bool:
 
 func restore_mana(amount: int) -> void:
 	current_mp = mini(max_mp, current_mp + amount)
+
+# ==============================================================================
+# Métodos de fábrica para instanciar arquetipos configurados en JSON
+# ==============================================================================
+
+## Crea una instancia de CharacterStats inicializada con los valores por defecto del jugador desde config/combat_config.json
+static func create_player_default() -> CharacterStats:
+	var stats := CharacterStats.new()
+	stats.character_name = "Player"
+	stats.level = int(GameConfig.get_combat_value("player_default_stats", "level", 1))
+	stats.base_str = int(GameConfig.get_combat_value("player_default_stats", "base_str", 10))
+	stats.base_agi = int(GameConfig.get_combat_value("player_default_stats", "base_agi", 10))
+	stats.base_int = int(GameConfig.get_combat_value("player_default_stats", "base_int", 10))
+	stats.base_vit = int(GameConfig.get_combat_value("player_default_stats", "base_vit", 10))
+	stats.recalculate_stats(true)
+	return stats
+
+## Crea una instancia de CharacterStats inicializada con los valores por defecto del dummy de práctica desde config/combat_config.json
+static func create_dummy_default() -> CharacterStats:
+	var stats := CharacterStats.new()
+	stats.character_name = "TrainingDummy"
+	stats.level = int(GameConfig.get_combat_value("dummy_default_stats", "level", 1))
+	stats.base_str = int(GameConfig.get_combat_value("dummy_default_stats", "base_str", 0))
+	stats.base_agi = int(GameConfig.get_combat_value("dummy_default_stats", "base_agi", 5))
+	stats.base_int = int(GameConfig.get_combat_value("dummy_default_stats", "base_int", 0))
+	stats.base_vit = int(GameConfig.get_combat_value("dummy_default_stats", "base_vit", 10))
+	stats.block_chance = float(GameConfig.get_combat_value("dummy_default_stats", "block_chance", 10.0))
+	stats.block_value_percent = float(GameConfig.get_combat_value("dummy_default_stats", "block_value_percent", 50.0))
+	stats.recalculate_stats(true)
+	return stats

@@ -124,9 +124,22 @@ func _init() -> void:
 
 	print("[OK] Prueba 7: Regla de daño mínimo garantizado (1 punto) verificada.")
 
+	# 8. Prueba de integración con combat_config.json
+	var player_cfg_stats := CharacterStats.create_player_default()
+	if player_cfg_stats.character_name != "Player" or player_cfg_stats.base_str != 10:
+		printerr("FALLO: create_player_default no cargó los datos esperados de combat_config.json")
+		failures += 1
+
+	var dummy_cfg_stats := CharacterStats.create_dummy_default()
+	if dummy_cfg_stats.character_name != "TrainingDummy" or dummy_cfg_stats.block_chance != 10.0:
+		printerr("FALLO: create_dummy_default no cargó los datos esperados de combat_config.json")
+		failures += 1
+
+	print("[OK] Prueba 8: Carga y fábricas desde combat_config.json verificadas.")
+
 	# Conclusión
 	if failures == 0:
-		print("--- TODAS LAS PRUEBAS (7/7) PASARON EXITOSAMENTE ---")
+		print("--- TODAS LAS PRUEBAS (8/8) PASARON EXITOSAMENTE ---")
 		quit(0)
 	else:
 		printerr("--- HUBO ", failures, " FALLOS EN LAS PRUEBAS ---")
