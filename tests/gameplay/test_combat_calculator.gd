@@ -142,6 +142,10 @@ func _init() -> void:
 	var player_target := CombatTarget.new()
 	player_target.target_name = "Player"
 	player_target._ready()
+	var p_stats := player_target.get_stats()
+	p_stats.base_crit_chance = 0.0
+	p_stats.base_agi = 0
+	p_stats.recalculate_stats(true)
 
 	var dummy_target := CombatTarget.new()
 	dummy_target.target_name = "TrainingDummy"

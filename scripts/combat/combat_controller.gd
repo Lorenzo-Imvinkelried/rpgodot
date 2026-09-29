@@ -261,6 +261,11 @@ func _apply_impact(target: Node3D, hit_index: int = 0, allow_true_damage: bool =
 
 	_broadcast_combat_result(hit_pos, target_path, result)
 
+	# 7.6 Ondas Expansivas / Cleave en Área (AoE Cleave Waves)
+	# Se ejecuta únicamente con el impacto principal (hit_index == 0) para evitar duplicación exponencial
+	if hit_index == 0 and attacker_stats and attacker_stats.aoe_radius > 0.5 and attacker_stats.aoe_damage_percent > 0.0 and result.total_damage > 0:
+		_apply_aoe_cleave(target, result, attacker_stats)
+
 func _broadcast_combat_result(hit_pos: Vector3, target_path: NodePath, result: DamageResult) -> void:
 	if _can_broadcast_rpc():
 		rpc("rpc_apply_combat_impact", hit_pos, target_path, result.total_damage, result.physical_damage, result.true_damage, result.is_crit, result.is_blocked, result.is_miss)
@@ -327,9 +332,86 @@ func _can_broadcast_rpc() -> bool:
 	return multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
 
 func _find_combat_target(node: Node) -> CombatTarget:
+	if node == null:
+		return null
 	if node is CombatTarget:
 		return node
+	if node.has_node("CombatTarget"):
+		var ct := node.get_node_or_null("CombatTarget") as CombatTarget
+		if ct:
+			return ct
 	for child in node.get_children():
 		if child is CombatTarget:
 			return child
 	return null
+
+## Aplica onda expansiva de daño (Cleave) a enemigos cercanos al objetivo primario.
+func _apply_aoe_cleave(primary_target: Node3D, primary_result: DamageResult, attacker_stats: CharacterStats) -> void:
+	if primary_target == null:
+		return
+
+	var tree := get_tree()
+	if tree == null and primary_target.is_inside_tree():
+		tree = primary_target.get_tree()
+	if tree == null:
+		tree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+
+	var center := primary_target.global_position if primary_target.is_inside_tree() else primary_target.position
+	var aoe_radius := attacker_stats.aoe_radius
+	var aoe_pct := attacker_stats.aoe_damage_percent / 100.0
+	var offset_y := float(GameConfig.get_combat_value("combat", "impact_height_offset", 1.1))
+
+	var raw_cleave_damage := float(primary_result.total_damage) * aoe_pct
+	if raw_cleave_damage <= 0.0:
+		return
+
+	var targetable_nodes := tree.get_nodes_in_group("targetable")
+	var processed_targets: Array[CombatTarget] = []
+
+	# Excluir el objetivo principal
+	var primary_comp := _find_combat_target(primary_target)
+	if primary_comp:
+		processed_targets.append(primary_comp)
+
+	for candidate in targetable_nodes:
+		if candidate == primary_target or candidate == _parent_body:
+			continue
+
+		var cand_target := _find_combat_target(candidate)
+		if cand_target == null or cand_target in processed_targets:
+			continue
+
+		# Obtener la posición espacial del objetivo secundario
+		var cand_spatial: Node3D = null
+		if candidate is Node3D:
+			cand_spatial = candidate
+		elif cand_target.get_parent() is Node3D:
+			cand_spatial = cand_target.get_parent() as Node3D
+
+		if cand_spatial == null:
+			continue
+
+		if cand_spatial == _parent_body:
+			continue
+
+		var cand_pos := cand_spatial.global_position if cand_spatial.is_inside_tree() else cand_spatial.position
+		var dist := cand_pos.distance_to(center)
+		if dist <= aoe_radius:
+			processed_targets.append(cand_target)
+
+			var sec_stats := cand_target.get_stats()
+			var cleave_res := CombatCalculator.calculate_mitigated_damage(
+				attacker_stats,
+				sec_stats,
+				raw_cleave_damage,
+				true,
+				false,
+				false
+			)
+
+			var sec_hit_pos := cand_pos + Vector3(0, offset_y, 0)
+			_broadcast_combat_result(sec_hit_pos, cand_spatial.get_path(), cleave_res)
+
+

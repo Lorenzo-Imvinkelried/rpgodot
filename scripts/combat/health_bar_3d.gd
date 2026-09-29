@@ -24,6 +24,9 @@ var _current_health: float = 100.0
 var _max_health: float = 100.0
 var _hp_tween: Tween = null
 var _fill_style: StyleBoxFlat = null
+var _base_entity_name: String = ""
+var _entity_name_color: Color = Color.WHITE
+var _status_controller: StatusEffectController = null
 
 func _ready() -> void:
 	height_offset = float(GameConfig.get_ui_value("health_bar", "height_offset", height_offset))
@@ -51,9 +54,19 @@ func _ready() -> void:
 	if auto_bind_combat_target and combat_target == null:
 		combat_target = _find_combat_target()
 
+	_status_controller = _find_status_controller()
+	if _status_controller:
+		_status_controller.stun_applied.connect(_on_status_changed)
+		_status_controller.stun_removed.connect(_on_status_changed)
+		_status_controller.bleed_applied.connect(_on_status_changed)
+		_status_controller.bleed_removed.connect(_on_status_changed)
+		_status_controller.slow_applied.connect(_on_status_changed)
+		_status_controller.slow_removed.connect(_on_status_changed)
+
 	if combat_target:
 		combat_target.health_changed.connect(_on_health_changed)
-		if not combat_target.target_name.is_empty() and name_label and name_label.text.is_empty():
+		combat_target.guard_changed.connect(_on_guard_changed)
+		if not combat_target.target_name.is_empty() and _base_entity_name.is_empty():
 			set_entity_name(combat_target.target_name)
 		set_health(combat_target.current_health, combat_target.max_health, false)
 	else:
@@ -61,9 +74,36 @@ func _ready() -> void:
 
 ## Configura el nombre a mostrar sobre la barra y su color distintivo.
 func set_entity_name(entity_name: String, text_color: Color = Color.WHITE) -> void:
-	if name_label:
-		name_label.text = entity_name
-		name_label.add_theme_color_override("font_color", text_color)
+	_base_entity_name = entity_name
+	_entity_name_color = text_color
+	_refresh_name_display()
+
+## Actualiza la visualización del nombre incorporando badges de estados alterados activos.
+func _refresh_name_display() -> void:
+	if name_label == null:
+		return
+	var badges: Array[String] = []
+	if _status_controller:
+		if _status_controller.is_stunned():
+			badges.append("💫")
+		if _status_controller.is_bleeding():
+			badges.append("🩸")
+		if _status_controller.is_slowed():
+			badges.append("❄")
+	if combat_target and combat_target.is_guarding:
+		badges.append("🛡")
+
+	if badges.is_empty():
+		name_label.text = _base_entity_name
+	else:
+		name_label.text = "%s  [%s]" % [_base_entity_name, " ".join(badges)]
+	name_label.add_theme_color_override("font_color", _entity_name_color)
+
+func _on_guard_changed(_guarding: bool) -> void:
+	_refresh_name_display()
+
+func _on_status_changed(_arg1 = null, _arg2 = null, _arg3 = null) -> void:
+	_refresh_name_display()
 
 ## Permite fijar un color estático para la barra si se desactiva el color dinámico.
 func set_bar_color(color: Color) -> void:
@@ -139,3 +179,16 @@ func _find_combat_target() -> CombatTarget:
 				return child
 		curr = curr.get_parent()
 	return null
+
+func _find_status_controller() -> StatusEffectController:
+	var curr: Node = get_parent()
+	while curr != null and not (curr is Viewport):
+		var ctrl := curr.get_node_or_null("StatusEffectController") as StatusEffectController
+		if ctrl:
+			return ctrl
+		for child in curr.get_children():
+			if child is StatusEffectController:
+				return child
+		curr = curr.get_parent()
+	return null
+

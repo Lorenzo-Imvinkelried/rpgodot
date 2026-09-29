@@ -123,6 +123,8 @@ var attack_speed: float = BASE_ATK_SPEED_DEFAULT
 @export var execute_threshold_factor: float = 0.25 # 25% HP
 @export var enemy_max_hp_damage_percent: float = 0.0
 @export var physical_damage_bonus: float = 100.0 # Base 100%
+@export var aoe_radius: float = 0.0 # Radio de onda expansiva / cleave en metros (0.0 = deshabilitado)
+@export var aoe_damage_percent: float = 0.0 # Porcentaje de daño transferido a enemigos en el área de impacto
 
 # --- Modificadores Defensivos Avanzados ---
 @export_group("Defensiva Avanzada")
@@ -270,6 +272,8 @@ func load_from_dictionary(dict: Dictionary) -> void:
 	if dict.has("execute_threshold_factor"): execute_threshold_factor = float(dict["execute_threshold_factor"])
 	if dict.has("enemy_max_hp_damage_percent"): enemy_max_hp_damage_percent = float(dict["enemy_max_hp_damage_percent"])
 	if dict.has("physical_damage_bonus"): physical_damage_bonus = float(dict["physical_damage_bonus"])
+	if dict.has("aoe_radius"): aoe_radius = float(dict["aoe_radius"])
+	if dict.has("aoe_damage_percent"): aoe_damage_percent = float(dict["aoe_damage_percent"])
 	if dict.has("block_chance"): block_chance = float(dict["block_chance"])
 	if dict.has("block_value_percent"): block_value_percent = float(dict["block_value_percent"])
 	if dict.has("thorns_percent"): thorns_percent = float(dict["thorns_percent"])

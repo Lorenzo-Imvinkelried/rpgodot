@@ -8,6 +8,9 @@ signal hit_received(damage: float, hit_position: Vector3, attacker: Node)
 signal miss_received(hit_position: Vector3, attacker: Node)
 signal health_changed(current_health: float, max_health: float)
 signal died()
+signal invulnerability_started(duration: float)
+signal invulnerability_ended()
+signal guard_changed(is_guarding: bool)
 
 const DAMAGE_NUMBER_FX_SCENE = preload("res://scenes/combat/damage_number_fx.tscn")
 const StatusEffectControllerScript = preload("res://scripts/combat/status_effect_controller.gd")
@@ -23,6 +26,41 @@ const StatusEffectControllerScript = preload("res://scripts/combat/status_effect
 			current_health = float(stats.current_hp)
 
 var current_health: float = 100.0
+
+# --- Mecánicas Defensivas Activas (I-Frames / Guardia) ---
+var is_invulnerable: bool = false
+var _invulnerability_timer: float = 0.0
+
+@export var is_guarding: bool = false:
+	set = set_guarding
+
+func set_guarding(val: bool) -> void:
+	if is_guarding == val:
+		return
+	is_guarding = val
+	var bonus_block: float = float(GameConfig.get_combat_value("defense_mechanics", "guard_block_bonus", 40.0))
+	var bonus_val: float = float(GameConfig.get_combat_value("defense_mechanics", "guard_block_value_bonus", 25.0))
+	if stats != null:
+		if is_guarding:
+			stats.block_chance += bonus_block
+			stats.block_value_percent += bonus_val
+		else:
+			stats.block_chance = maxf(0.0, stats.block_chance - bonus_block)
+			stats.block_value_percent = maxf(0.0, stats.block_value_percent - bonus_val)
+	guard_changed.emit(is_guarding)
+
+func trigger_invulnerability(duration: float = 0.20) -> void:
+	is_invulnerable = true
+	_invulnerability_timer = duration
+	invulnerability_started.emit(duration)
+
+func _process(delta: float) -> void:
+	if _invulnerability_timer > 0.0:
+		_invulnerability_timer -= delta
+		if _invulnerability_timer <= 0.0:
+			_invulnerability_timer = 0.0
+			is_invulnerable = false
+			invulnerability_ended.emit()
 
 func _enter_tree() -> void:
 	_init_stats()
@@ -55,6 +93,12 @@ func get_stats() -> CharacterStats:
 ## Procesa un resultado de combate (DamageResult) calculado por CombatCalculator.
 func take_combat_result(result: DamageResult, hit_position: Vector3, attacker: Node) -> void:
 	if result == null:
+		return
+
+	# 8.1 I-Frames durante Esquiva / Dash
+	if is_invulnerable:
+		if spawn_damage_numbers:
+			_spawn_damage_number(0.0, hit_position, false, false, false, false, false, false, "ESQUIVADO")
 		return
 
 	if result.is_miss:

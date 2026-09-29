@@ -32,6 +32,14 @@
     "ghost_anim_speed_multiplier": 1.25,
     "ghost_swing_completion_ratio": 0.85
   },
+  "defense_mechanics": {
+    "dash_duration": 0.20,
+    "dash_cooldown": 1.0,
+    "dash_speed_multiplier": 2.2,
+    "guard_block_bonus": 40.0,
+    "guard_block_value_bonus": 25.0,
+    "guard_speed_multiplier": 0.70
+  },
   "stat_scaling": {
     "hp_per_vit": 20.0,
     "def_per_vit": 2.0,
@@ -68,6 +76,8 @@
     "execute_threshold_factor": 0.25,
     "enemy_max_hp_damage_percent": 0.0,
     "physical_damage_bonus": 100.0,
+    "aoe_radius": 0.0,
+    "aoe_damage_percent": 0.0,
     "block_chance": 0.0,
     "block_value_percent": 50.0,
     "thorns_percent": 0.0,
@@ -108,6 +118,8 @@
     "base_evasion": 100.0,
     "base_crit_chance": 0.0,
     "base_crit_damage": 150.0,
+    "aoe_radius": 0.0,
+    "aoe_damage_percent": 0.0,
     "block_chance": 15.0,
     "block_value_percent": 50.0,
     "thorns_percent": 0.0,

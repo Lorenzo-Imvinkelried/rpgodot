@@ -173,5 +173,185 @@ func _run_all_tests() -> void:
 	p_node.queue_free()
 	d_node.queue_free()
 
-	print("--- TODAS LAS PRUEBAS DE FASE 4 (8/8) PASARON EXITOSAMENTE ---\n")
+	# --------------------------------------------------------------------------
+	# PRUEBA 9: Ondas Expansivas / Cleave en Área (AoE Cleave Waves)
+	# --------------------------------------------------------------------------
+	var attacker_node := CharacterBody3D.new()
+	var attacker_comp := CombatTarget.new()
+	var atk_stats_aoe := CharacterStats.new()
+	atk_stats_aoe.base_str = 0
+	atk_stats_aoe.base_attack = 50.0
+	atk_stats_aoe.aoe_radius = 4.0 # 4 metros de radio
+	atk_stats_aoe.aoe_damage_percent = 50.0 # 50% de daño a objetivos secundarios
+	atk_stats_aoe.recalculate_stats(true)
+	attacker_comp.stats = atk_stats_aoe
+	attacker_node.add_child(attacker_comp)
+
+	var combat_ctrl := CombatController.new()
+	attacker_node.add_child(combat_ctrl)
+	root.add_child(attacker_node)
+	combat_ctrl._parent_body = attacker_node
+
+	# Objetivo Primario (a 1 metro)
+	var prim_node := StaticBody3D.new()
+	prim_node.position = Vector3(1.0, 0, 0)
+	prim_node.add_to_group("targetable")
+	var prim_target := CombatTarget.new()
+	var prim_stats := CharacterStats.new()
+	prim_stats.base_vit = 0
+	prim_stats.base_defense = 0.0
+	prim_stats.base_max_hp = 100.0
+	prim_stats.recalculate_stats(true)
+	prim_target.stats = prim_stats
+	prim_node.add_child(prim_target)
+	root.add_child(prim_node)
+
+	# Objetivo Secundario en rango (a 2 metros del primario)
+	var sec_node := StaticBody3D.new()
+	sec_node.position = Vector3(3.0, 0, 0) # Distancia al primario: 2 metros (dentro de radio 4.0)
+	sec_node.add_to_group("targetable")
+	var sec_target := CombatTarget.new()
+	var sec_stats := CharacterStats.new()
+	sec_stats.base_vit = 0
+	sec_stats.base_defense = 0.0
+	sec_stats.base_max_hp = 100.0
+	sec_stats.recalculate_stats(true)
+	sec_target.stats = sec_stats
+	sec_node.add_child(sec_target)
+	root.add_child(sec_node)
+
+	# Objetivo Lejano fuera de rango (a 8 metros del primario)
+	var far_node := StaticBody3D.new()
+	far_node.position = Vector3(9.0, 0, 0) # Distancia al primario: 8 metros (> 4.0m)
+	far_node.add_to_group("targetable")
+	var far_target := CombatTarget.new()
+	var far_stats := CharacterStats.new()
+	far_stats.base_vit = 0
+	far_stats.base_defense = 0.0
+	far_stats.base_max_hp = 100.0
+	far_stats.recalculate_stats(true)
+	far_target.stats = far_stats
+	far_node.add_child(far_target)
+	root.add_child(far_node)
+
+	# Esperar un ciclo de frames para que los nodos ingresen al árbol y registren el grupo 'targetable'
+	await process_frame
+
+	var primary_hit := DamageResult.new()
+	primary_hit.total_damage = 40
+	primary_hit.physical_damage = 40
+	prim_target.take_combat_result(primary_hit, prim_node.global_position, attacker_node)
+
+	# Invocamos la onda de cleave de CombatController
+	combat_ctrl._apply_aoe_cleave(prim_node, primary_hit, atk_stats_aoe)
+
+	assert(prim_target.current_health == 60.0, "Objetivo primario debe recibir 40 de daño (obtenido: %f)" % prim_target.current_health)
+	assert(sec_target.current_health == 80.0, "Objetivo en radio de cleave debe recibir 50%% de daño = 20 (obtenido: %f)" % sec_target.current_health)
+	assert(far_target.current_health == 100.0, "Objetivo fuera de radio de cleave debe conservar 100 HP (obtenido: %f)" % far_target.current_health)
+	print("[OK] Prueba 9: Ondas Expansivas / Cleave en Área (AoE Cleave Waves) verificadas exitosamente.")
+
+	attacker_node.queue_free()
+	prim_node.queue_free()
+	sec_node.queue_free()
+	far_node.queue_free()
+
+	# --------------------------------------------------------------------------
+	# PRUEBA 10: Esquiva con I-Frames (Dash Invulnerability)
+	# --------------------------------------------------------------------------
+	var dodge_target := CombatTarget.new()
+	var dodge_stats := CharacterStats.new()
+	dodge_stats.base_vit = 0
+	dodge_stats.base_max_hp = 100.0
+	dodge_stats.recalculate_stats(true)
+	dodge_target.stats = dodge_stats
+	root.add_child(dodge_target)
+
+	var initial_hp := dodge_target.current_health
+	var test_dmg := DamageResult.new()
+	test_dmg.total_damage = 25
+	dodge_target.take_combat_result(test_dmg, Vector3.ZERO, null)
+	assert(dodge_target.current_health == initial_hp - 25.0, "Sin invulnerabilidad debe recibir 25 de daño (obtenido: %f)" % dodge_target.current_health)
+
+	dodge_target.trigger_invulnerability(0.20)
+	assert(dodge_target.is_invulnerable == true, "Debe estar invulnerable tras trigger_invulnerability")
+
+	var dodge_dmg := DamageResult.new()
+	dodge_dmg.total_damage = 50
+	dodge_target.take_combat_result(dodge_dmg, Vector3.ZERO, null)
+	assert(dodge_target.current_health == initial_hp - 25.0, "Durante I-Frames no debe recibir ningún daño (conserva %f HP)" % dodge_target.current_health)
+
+	dodge_target._process(0.25)
+	assert(dodge_target.is_invulnerable == false, "Tras expirar el temporizador ya no debe estar invulnerable")
+
+	dodge_target.take_combat_result(test_dmg, Vector3.ZERO, null)
+	assert(dodge_target.current_health == initial_hp - 50.0, "Tras terminar el dash vuelve a recibir daño (obtenido: %f)" % dodge_target.current_health)
+	print("[OK] Prueba 10: Esquiva con I-Frames (Dash Invulnerability) verificada exitosamente.")
+
+	dodge_target.queue_free()
+
+	# --------------------------------------------------------------------------
+	# PRUEBA 11: Guardia Activa con Escudo (Active Shield Guard)
+	# --------------------------------------------------------------------------
+	var guard_target := CombatTarget.new()
+	var guard_stats := CharacterStats.new()
+	guard_stats.block_chance = 10.0
+	guard_stats.block_value_percent = 50.0
+	guard_stats.recalculate_stats(true)
+	guard_target.stats = guard_stats
+	root.add_child(guard_target)
+
+	assert(guard_target.is_guarding == false, "No debe empezar cubriéndose")
+	assert(guard_stats.block_chance == 10.0, "Probabilidad de bloqueo inicial debe ser 10%")
+
+	guard_target.is_guarding = true
+	assert(guard_target.is_guarding == true, "Debe reportar postura de guardia activa")
+	assert(guard_stats.block_chance == 50.0, "Guardia debe sumar +40%% a la probabilidad de bloqueo (obtenido: %f)" % guard_stats.block_chance)
+	assert(guard_stats.block_value_percent == 75.0, "Guardia debe sumar +25%% al valor de bloqueo (obtenido: %f)" % guard_stats.block_value_percent)
+
+	guard_target.is_guarding = false
+	assert(guard_stats.block_chance == 10.0, "Al soltar guardia debe regresar a 10% de probabilidad")
+	assert(guard_stats.block_value_percent == 50.0, "Al soltar guardia debe regresar a 50% de valor")
+	print("[OK] Prueba 11: Guardia Activa con Escudo (Active Shield Guard) verificada exitosamente.")
+
+	guard_target.queue_free()
+
+	# --------------------------------------------------------------------------
+	# PRUEBA 12: Badges de Estados Alterados y Guardia en HealthBar3D
+	# --------------------------------------------------------------------------
+	var hbar_scene := load("res://scenes/combat/health_bar_3d.tscn")
+	var hbar_instance: HealthBar3D = hbar_scene.instantiate()
+	var dummy_entity := Node3D.new()
+	var hbar_combat_target := CombatTarget.new()
+	hbar_combat_target.target_name = "Muñeco"
+	var hbar_status_ctrl := StatusEffectControllerScript.new()
+
+	dummy_entity.add_child(hbar_combat_target)
+	dummy_entity.add_child(hbar_status_ctrl)
+	dummy_entity.add_child(hbar_instance)
+	root.add_child(dummy_entity)
+
+	# Esperar a que HealthBar3D._ready() ejecute el auto-binding
+	await process_frame
+
+	hbar_instance.set_entity_name("Muñeco")
+	assert(hbar_instance.name_label.text == "Muñeco", "Nombre base debe ser 'Muñeco'")
+
+	# Aplicar Stun -> debe aparecer [💫]
+	hbar_status_ctrl.apply_stun(2.0)
+	assert(hbar_instance.name_label.text.find("💫") != -1, "Debe mostrar icono de Aturdimiento 💫 (obtenido: '%s')" % hbar_instance.name_label.text)
+
+	# Activar Guardia -> debe agregarse [🛡]
+	hbar_combat_target.is_guarding = true
+	assert(hbar_instance.name_label.text.find("🛡") != -1, "Debe mostrar icono de Guardia 🛡 (obtenido: '%s')" % hbar_instance.name_label.text)
+
+	# Quitar estados -> debe volver a "Muñeco"
+	hbar_combat_target.is_guarding = false
+	hbar_status_ctrl.clear_all_effects()
+	assert(hbar_instance.name_label.text == "Muñeco", "Al limpiar efectos debe volver a 'Muñeco' sin badges (obtenido: '%s')" % hbar_instance.name_label.text)
+	print("[OK] Prueba 12: Badges Visuales en HealthBar3D verificados exitosamente.")
+
+	dummy_entity.queue_free()
+
+	print("--- TODAS LAS PRUEBAS DE FASE 4 (12/12) PASARON EXITOSAMENTE ---\n")
 	quit(0)
+

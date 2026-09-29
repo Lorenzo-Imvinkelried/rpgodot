@@ -20,6 +20,12 @@ var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9
 var _was_forward_pressed: bool = false
 var _prev_global_pos: Vector3 = Vector3.ZERO
 
+# Temporizadores y variables de Dash y Guardia Activa
+var _dash_timer: float = 0.0
+var _dash_cooldown_timer: float = 0.0
+var _dash_velocity: Vector3 = Vector3.ZERO
+var _was_space_pressed: bool = false
+
 func _enter_tree() -> void:
 	var peer_id := name.to_int()
 	set_multiplayer_authority(peer_id, true)
@@ -81,6 +87,9 @@ func _physics_process(delta: float) -> void:
 	if not is_multiplayer_authority():
 		return
 
+	if _dash_cooldown_timer > 0.0:
+		_dash_cooldown_timer -= delta
+
 	_apply_gravity(delta)
 	_process_movement(delta)
 
@@ -99,9 +108,21 @@ func _process_movement(delta: float) -> void:
 	# Bloqueo total si el jugador se encuentra aturdido (Stun)
 	var status_ctrl := get_node_or_null("StatusEffectController")
 	if status_ctrl and status_ctrl.has_method("is_stunned") and status_ctrl.is_stunned():
+		if combat_target and combat_target.is_guarding:
+			combat_target.is_guarding = false
+		_dash_timer = 0.0
 		velocity.x = 0.0
 		velocity.z = 0.0
 		is_moving = false
+		move_and_slide()
+		return
+
+	# Si se encuentra en plena ejecución de Dash
+	if _dash_timer > 0.0:
+		_dash_timer -= delta
+		velocity.x = _dash_velocity.x
+		velocity.z = _dash_velocity.z
+		is_moving = true
 		move_and_slide()
 		return
 
@@ -120,6 +141,58 @@ func _process_movement(delta: float) -> void:
 		forward_input += 1.0
 	if Input.is_key_pressed(KEY_S) or Input.is_action_pressed("move_backward"):
 		forward_input -= 1.0
+
+	# 3. Guardia Activa con Escudo (Active Shield Guard - Shift)
+	var wants_guard := Input.is_key_pressed(KEY_SHIFT) or Input.is_action_pressed("guard")
+	if wants_guard:
+		if combat_target and not combat_target.is_guarding:
+			combat_target.is_guarding = true
+		var guard_mult := float(GameConfig.get_combat_value("defense_mechanics", "guard_speed_multiplier", 0.70))
+		move_speed_mult *= guard_mult
+	else:
+		if combat_target and combat_target.is_guarding:
+			combat_target.is_guarding = false
+
+	# 4. Esquiva Rápida con I-Frames (Dash - Barra Espaciadora)
+	var is_space_down := Input.is_key_pressed(KEY_SPACE) or Input.is_action_pressed("ui_select")
+	var just_pressed_space := is_space_down and not _was_space_pressed
+	_was_space_pressed = is_space_down
+
+	if just_pressed_space and _dash_cooldown_timer <= 0.0:
+		var dash_dur := float(GameConfig.get_combat_value("defense_mechanics", "dash_duration", 0.20))
+		var dash_cd := float(GameConfig.get_combat_value("defense_mechanics", "dash_cooldown", 1.0))
+		var dash_mult := float(GameConfig.get_combat_value("defense_mechanics", "dash_speed_multiplier", 2.2))
+
+		_dash_timer = dash_dur
+		_dash_cooldown_timer = dash_cd
+
+		var dash_dir := Vector3.ZERO
+		if forward_input > 0.0:
+			dash_dir += -transform.basis.z
+		elif forward_input < 0.0:
+			dash_dir += transform.basis.z
+		if turn_input > 0.0:
+			dash_dir += -transform.basis.x
+		elif turn_input < 0.0:
+			dash_dir += transform.basis.x
+
+		if dash_dir.length_squared() < 0.01:
+			dash_dir = -transform.basis.z
+		else:
+			dash_dir = dash_dir.normalized()
+
+		_dash_velocity = dash_dir * config.forward_speed * dash_mult
+
+		if combat_target:
+			combat_target.trigger_invulnerability(dash_dur)
+		if combat_controller and combat_controller.is_active():
+			combat_controller.clear_target()
+
+		velocity.x = _dash_velocity.x
+		velocity.z = _dash_velocity.z
+		is_moving = true
+		move_and_slide()
+		return
 
 	# Cancelar combate automático si el jugador presiona manualmente cualquier tecla de movimiento
 	var has_manual_input := (turn_input != 0.0 or forward_input != 0.0)
