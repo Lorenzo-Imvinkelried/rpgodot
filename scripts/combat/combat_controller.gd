@@ -124,16 +124,25 @@ func update_combat(delta: float, visuals: PlayerVisuals) -> void:
 				state = State.APPROACHING
 				return
 
+			# Verificar si el atacante se encuentra aturdido (Stun)
+			var status_ctrl: Node = null
+			if _parent_body:
+				status_ctrl = _parent_body.get_node_or_null("StatusEffectController")
+			if status_ctrl and status_ctrl.has_method("is_stunned") and status_ctrl.is_stunned():
+				return
+
 			# Orientar al atacante hacia el objetivo durante el combate
 			_face_target()
 
-			# Chequear cadencia de ataque según attack_speed de las estadísticas
+			# Chequear cadencia de ataque según attack_speed y ralentizaciones activas
+			var atk_speed_mult: float = status_ctrl.get_attack_speed_multiplier() if (status_ctrl and status_ctrl.has_method("get_attack_speed_multiplier")) else 1.0
 			var current_stats := get_stats()
-			var atk_speed: float = current_stats.attack_speed if current_stats else 1.2
+			var base_atk_spd: float = current_stats.attack_speed if current_stats else 1.2
+			var atk_speed: float = base_atk_spd * atk_speed_mult
 			var attack_interval := 1.0 / maxf(0.05, atk_speed)
 			if _time_since_last_attack >= attack_interval:
 				_time_since_last_attack = 0.0
-				_execute_attack(visuals)
+				_execute_attack(visuals, atk_speed)
 
 func _face_target() -> void:
 	if _parent_body == null or not is_instance_valid(current_target):
@@ -144,9 +153,8 @@ func _face_target() -> void:
 		var target_yaw := atan2(-diff.x, -diff.z)
 		_parent_body.rotation.y = target_yaw
 
-func _execute_attack(visuals: PlayerVisuals) -> void:
+func _execute_attack(visuals: PlayerVisuals, atk_speed: float = 1.0) -> void:
 	var current_stats := get_stats()
-	var atk_speed: float = current_stats.attack_speed if current_stats else 1.0
 	var speed_scale: float = 1.0
 	if visuals:
 		speed_scale = visuals.get_attack_speed_scale(atk_speed)

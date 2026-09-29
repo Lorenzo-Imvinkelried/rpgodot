@@ -10,6 +10,11 @@ const COLOR_BLOCKED := Color(0.4, 0.85, 1.0, 1.0)
 const COLOR_MISS := Color(0.75, 0.82, 0.9, 0.85)
 const OUTLINE_DARK := Color(0.05, 0.06, 0.08, 0.95)
 
+const COLOR_HEAL := Color(0.29, 0.87, 0.5, 1.0) # Verde esmeralda
+const COLOR_THORNS := Color(0.98, 0.57, 0.24, 1.0) # Ámbar / Espinas
+const COLOR_BLEED := Color(0.96, 0.25, 0.37, 1.0) # Carmesí / Sangrado
+const COLOR_STATUS := Color(1.0, 0.84, 0.25, 1.0) # Amarillo / CC
+
 func _ready() -> void:
 	billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	no_depth_test = true
@@ -20,20 +25,49 @@ func _ready() -> void:
 	outline_modulate = GameConfig.get_color(str(colors_dict.get("outline", "#0d1014")), OUTLINE_DARK)
 
 ## Configura el valor de daño o estado a mostrar y dispara la animación de impacto.
-func setup(damage: float, is_crit: bool = false, is_blocked: bool = false, is_miss: bool = false) -> void:
+func setup(
+	damage: float,
+	is_crit: bool = false,
+	is_blocked: bool = false,
+	is_miss: bool = false,
+	is_heal: bool = false,
+	is_thorns: bool = false,
+	is_bleed: bool = false,
+	custom_text: String = ""
+) -> void:
 	var rounded_dmg := int(round(damage))
 	var colors_dict := GameConfig.get_ui_value("damage_numbers", "colors", {}) as Dictionary
 	var col_norm := GameConfig.get_color(str(colors_dict.get("normal", "#fde047")), COLOR_NORMAL)
 	var col_crit := GameConfig.get_color(str(colors_dict.get("crit", "#ff4533")), COLOR_CRIT)
 	var col_blocked := GameConfig.get_color(str(colors_dict.get("blocked", "#67e8f9")), COLOR_BLOCKED)
 	var col_miss := GameConfig.get_color(str(colors_dict.get("miss", "#cbd5e1")), COLOR_MISS)
+	var col_heal := GameConfig.get_color(str(colors_dict.get("heal", "#4ade80")), COLOR_HEAL)
+	var col_thorns := GameConfig.get_color(str(colors_dict.get("thorns", "#fb923c")), COLOR_THORNS)
+	var col_bleed := GameConfig.get_color(str(colors_dict.get("bleed", "#f43f5e")), COLOR_BLEED)
+	var col_status := GameConfig.get_color(str(colors_dict.get("status", "#facc15")), COLOR_STATUS)
 
 	var fs_norm := int(GameConfig.get_ui_value("damage_numbers", "font_size_normal", 36))
 	var fs_crit := int(GameConfig.get_ui_value("damage_numbers", "font_size_crit", 44))
 
-	if is_miss:
+	if not custom_text.is_empty():
+		text = custom_text
+		modulate = col_status
+		font_size = fs_crit
+	elif is_miss:
 		text = "FALLO"
 		modulate = col_miss
+		font_size = fs_norm
+	elif is_heal:
+		text = "+%d" % rounded_dmg
+		modulate = col_heal
+		font_size = fs_norm
+	elif is_thorns:
+		text = "%d 🌵" % rounded_dmg
+		modulate = col_thorns
+		font_size = fs_norm
+	elif is_bleed:
+		text = "%d 🩸" % rounded_dmg
+		modulate = col_bleed
 		font_size = fs_norm
 	elif is_blocked:
 		text = "%d 🛡" % rounded_dmg

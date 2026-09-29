@@ -144,6 +144,19 @@ var attack_speed: float = BASE_ATK_SPEED_DEFAULT
 @export var double_strike_chance: float = 0.0
 @export var triple_strike_chance: float = 0.0
 
+# --- Efectos On-Hit y Control de Masas (CC) ---
+@export_group("Efectos On-Hit y CC")
+@export var stun_chance: float = 0.0
+@export var stun_duration: float = 1.5
+@export var bleed_chance: float = 0.0
+@export var bleed_duration: float = 4.0
+@export var bleed_flat: int = 5
+@export var bleed_percent: float = 15.0 # % del Ataque actual por tick de sangrado
+@export var slow_chance: float = 0.0
+@export var slow_duration: float = 3.0
+@export var slow_move_percent: float = 30.0
+@export var slow_attack_percent: float = 20.0
+
 func _init() -> void:
 	recalculate_stats(true)
 
@@ -212,8 +225,10 @@ func is_alive() -> bool:
 func apply_damage(amount: int) -> void:
 	current_hp = maxi(0, current_hp - amount)
 
-func heal(amount: int) -> void:
+func heal(amount: int) -> int:
+	var prev := current_hp
 	current_hp = mini(max_hp, current_hp + amount)
+	return current_hp - prev
 
 func consume_mana(amount: int) -> bool:
 	if current_mp >= amount:
@@ -221,8 +236,10 @@ func consume_mana(amount: int) -> bool:
 		return true
 	return false
 
-func restore_mana(amount: int) -> void:
+func restore_mana(amount: int) -> int:
+	var prev := current_mp
 	current_mp = mini(max_mp, current_mp + amount)
+	return current_mp - prev
 
 # ==============================================================================
 # Métodos de fábrica e importación desde Diccionario / JSON
@@ -267,6 +284,16 @@ func load_from_dictionary(dict: Dictionary) -> void:
 	if dict.has("cooldown_reduction"): cooldown_reduction = float(dict["cooldown_reduction"])
 	if dict.has("double_strike_chance"): double_strike_chance = float(dict["double_strike_chance"])
 	if dict.has("triple_strike_chance"): triple_strike_chance = float(dict["triple_strike_chance"])
+	if dict.has("stun_chance"): stun_chance = float(dict["stun_chance"])
+	if dict.has("stun_duration"): stun_duration = float(dict["stun_duration"])
+	if dict.has("bleed_chance"): bleed_chance = float(dict["bleed_chance"])
+	if dict.has("bleed_duration"): bleed_duration = float(dict["bleed_duration"])
+	if dict.has("bleed_flat"): bleed_flat = int(dict["bleed_flat"])
+	if dict.has("bleed_percent"): bleed_percent = float(dict["bleed_percent"])
+	if dict.has("slow_chance"): slow_chance = float(dict["slow_chance"])
+	if dict.has("slow_duration"): slow_duration = float(dict["slow_duration"])
+	if dict.has("slow_move_percent"): slow_move_percent = float(dict["slow_move_percent"])
+	if dict.has("slow_attack_percent"): slow_attack_percent = float(dict["slow_attack_percent"])
 	recalculate_stats(true)
 
 ## Crea una instancia de CharacterStats inicializada desde una sección específica de combat_config.json

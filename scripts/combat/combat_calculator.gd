@@ -220,3 +220,85 @@ static func calculate_skill_damage(
 	var base_atk: float = float(caster.attack) if caster else 0.0
 	var input_raw: float = base_atk + skill_flat_damage
 	return calculate_damage(caster, target, allow_true_damage, skill_flat_damage, -1)
+
+# ==============================================================================
+# 6. EFECTOS ON-HIT Y CONTROL DE MASAS (Sección 7 Especificación)
+# ==============================================================================
+
+## Calcula la cantidad de vida curada por Robo de Vida (Lifesteal) a partir del daño total infligido.
+static func calculate_lifesteal(attacker: CharacterStats, total_damage: int) -> int:
+	if attacker == null or total_damage <= 0 or attacker.lifesteal_percent <= 0.0:
+		return 0
+	return maxi(0, int(round(float(total_damage) * (attacker.lifesteal_percent / 100.0))))
+
+## Calcula la cantidad de maná restaurada por Robo de Maná (Mana Steal) a partir del daño total infligido.
+static func calculate_mana_steal(attacker: CharacterStats, total_damage: int) -> int:
+	if attacker == null or total_damage <= 0 or attacker.mana_steal_percent <= 0.0:
+		return 0
+	return maxi(0, int(round(float(total_damage) * (attacker.mana_steal_percent / 100.0))))
+
+## Calcula el daño reflejado por Espinas (Thorns), mitigado por la armadura del atacante original.
+## Retorna null si no hay espinas activas o si el daño original fue Daño Verdadero puro.
+static func calculate_thorns_damage(
+	defender: CharacterStats,
+	attacker: CharacterStats,
+	total_damage: int,
+	is_pure_true_damage: bool = false
+) -> DamageResult:
+	if defender == null or attacker == null or total_damage <= 0:
+		return null
+	if defender.thorns_percent <= 0.0 or is_pure_true_damage:
+		return null
+
+	var raw_thorns := float(total_damage) * (defender.thorns_percent / 100.0)
+	if raw_thorns <= 0.0:
+		return null
+
+	# El daño reflejado se mitiga con la armadura del atacante original
+	var res := calculate_mitigated_damage(defender, attacker, raw_thorns, true)
+	res.is_thorns = true
+	return res
+
+## Determina si un golpe aplica Aturdimiento (Stun) y calcula su duración efectiva mitigada por Tenacidad.
+## Retorna 0.0 si falla la tirada o si la duración efectiva cae por debajo del umbral mínimo de 0.05s.
+static func calculate_stun_duration(
+	attacker: CharacterStats,
+	defender: CharacterStats,
+	forced_roll: float = -1.0
+) -> float:
+	if attacker == null or attacker.stun_chance <= 0.0 or attacker.stun_duration <= 0.0:
+		return 0.0
+
+	var roll := forced_roll if forced_roll >= 0.0 else (randf() * 100.0)
+	if roll > attacker.stun_chance:
+		return 0.0
+
+	var tenacity: float = defender.tenacity_percent if defender else 0.0
+	var effective_duration := attacker.stun_duration * maxf(0.0, 1.0 - (tenacity / 100.0))
+
+	# Umbral mínimo de inmunidad de la especificación
+	if effective_duration <= 0.05:
+		return 0.0
+
+	return effective_duration
+
+## Calcula el daño de un tick de Sangrado periódico (1.0s), sumando daño plano y porcentaje de ataque actual.
+static func calculate_bleed_tick(
+	source: CharacterStats,
+	victim: CharacterStats,
+	flat_damage: int,
+	percent_damage: float
+) -> DamageResult:
+	if source == null or victim == null:
+		return null
+
+	var current_atk: float = float(source.attack)
+	var pct_val: float = current_atk * (percent_damage / 100.0)
+	var total_raw := float(flat_damage) + pct_val
+	if total_raw <= 0.0:
+		return null
+
+	var res := calculate_mitigated_damage(source, victim, total_raw, true)
+	res.is_bleed = true
+	return res
+

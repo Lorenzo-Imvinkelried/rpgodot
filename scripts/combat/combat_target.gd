@@ -10,11 +10,17 @@ signal health_changed(current_health: float, max_health: float)
 signal died()
 
 const DAMAGE_NUMBER_FX_SCENE = preload("res://scenes/combat/damage_number_fx.tscn")
+const StatusEffectControllerScript = preload("res://scripts/combat/status_effect_controller.gd")
 
 @export var target_name: String = "Objetivo"
 @export var max_health: float = 100.0
 @export var spawn_damage_numbers: bool = true
-@export var stats: CharacterStats = null
+@export var stats: CharacterStats = null:
+	set(val):
+		stats = val
+		if stats != null:
+			max_health = float(stats.max_hp)
+			current_health = float(stats.current_hp)
 
 var current_health: float = 100.0
 
@@ -59,15 +65,79 @@ func take_combat_result(result: DamageResult, hit_position: Vector3, attacker: N
 
 	var dmg := float(result.total_damage)
 	var prev_hp := current_health
-	current_health = maxf(0.0, current_health - dmg)
 	if stats:
 		stats.apply_damage(result.total_damage)
+		current_health = float(stats.current_hp)
+	else:
+		current_health = maxf(0.0, current_health - dmg)
 
 	hit_received.emit(dmg, hit_position, attacker)
 	health_changed.emit(current_health, max_health)
 
 	if spawn_damage_numbers and dmg > 0.0:
-		_spawn_damage_number(dmg, hit_position, result.is_crit, result.is_blocked, false)
+		_spawn_damage_number(dmg, hit_position, result.is_crit, result.is_blocked, false, false, result.is_thorns, result.is_bleed)
+
+	# 7.1 Robo de Vida y Maná (Lifesteal & Mana Steal)
+	if attacker and dmg > 0.0 and not result.is_thorns and not result.is_bleed:
+		var attacker_target := _find_combat_target(attacker)
+		if attacker_target:
+			var atk_stats := attacker_target.get_stats()
+			var heal_amount := CombatCalculator.calculate_lifesteal(atk_stats, result.total_damage)
+			if heal_amount > 0:
+				attacker_target.heal(float(heal_amount))
+				var atk_pos := (attacker as Node3D).global_position if (attacker is Node3D and (attacker as Node3D).is_inside_tree()) else hit_position
+				attacker_target._spawn_damage_number(float(heal_amount), atk_pos + Vector3(0, 1.2, 0), false, false, false, true)
+			var mana_amount := CombatCalculator.calculate_mana_steal(atk_stats, result.total_damage)
+			if mana_amount > 0 and atk_stats:
+				atk_stats.restore_mana(mana_amount)
+
+	# 7.2 Espinas (Thorns)
+	if stats and stats.thorns_percent > 0.0 and dmg > 0.0 and not result.is_thorns and attacker:
+		var attacker_target := _find_combat_target(attacker)
+		if attacker_target:
+			var atk_stats := attacker_target.get_stats()
+			var is_pure_true := (result.true_damage >= result.total_damage and result.physical_damage == 0)
+			var thorns_res := CombatCalculator.calculate_thorns_damage(stats, atk_stats, result.total_damage, is_pure_true)
+			if thorns_res and thorns_res.total_damage > 0:
+				var atk_pos := (attacker as Node3D).global_position if (attacker is Node3D and (attacker as Node3D).is_inside_tree()) else hit_position
+				attacker_target.take_combat_result(thorns_res, atk_pos + Vector3(0, 1.0, 0), get_parent())
+
+	# 7.3 Aturdimiento y Tenacidad (Stun & Tenacity)
+	if attacker and dmg > 0.0 and not result.is_thorns and not result.is_bleed:
+		var attacker_target := _find_combat_target(attacker)
+		if attacker_target:
+			var atk_stats := attacker_target.get_stats()
+			var stun_dur := CombatCalculator.calculate_stun_duration(atk_stats, stats)
+			if stun_dur > 0.0:
+				var status_ctrl := _get_status_controller()
+				if status_ctrl:
+					status_ctrl.apply_stun(stun_dur)
+					if spawn_damage_numbers:
+						_spawn_damage_number(0.0, hit_position, false, false, false, false, false, false, "¡ATURDIDO!")
+
+	# 7.4 Sangrado Continuo (Bleed sin Snapshotting)
+	if attacker and dmg > 0.0 and not result.is_thorns and not result.is_bleed:
+		var attacker_target := _find_combat_target(attacker)
+		if attacker_target:
+			var atk_stats := attacker_target.get_stats()
+			if atk_stats.bleed_chance > 0.0 and (randf() * 100.0 <= atk_stats.bleed_chance):
+				var status_ctrl := _get_status_controller()
+				if status_ctrl:
+					status_ctrl.apply_bleed(atk_stats, atk_stats.bleed_duration, atk_stats.bleed_flat, atk_stats.bleed_percent, attacker)
+					if spawn_damage_numbers:
+						_spawn_damage_number(0.0, hit_position, false, false, false, false, false, false, "SANGRADO 🩸")
+
+	# 7.5 Ralentización (Slow)
+	if attacker and dmg > 0.0 and not result.is_thorns and not result.is_bleed:
+		var attacker_target := _find_combat_target(attacker)
+		if attacker_target:
+			var atk_stats := attacker_target.get_stats()
+			if atk_stats.slow_chance > 0.0 and (randf() * 100.0 <= atk_stats.slow_chance):
+				var status_ctrl := _get_status_controller()
+				if status_ctrl:
+					status_ctrl.apply_slow(atk_stats.slow_move_percent, atk_stats.slow_attack_percent, atk_stats.slow_duration)
+					if spawn_damage_numbers:
+						_spawn_damage_number(0.0, hit_position, false, false, false, false, false, false, "RALENTIZADO ❄")
 
 	if prev_hp > 0.0 and current_health <= 0.0:
 		died.emit()
@@ -102,12 +172,24 @@ func rpc_reset_health() -> void:
 
 ## Incrementa la salud en una cantidad fija sin superar el valor máximo.
 func heal(amount: float) -> void:
-	current_health = minf(max_health, current_health + amount)
 	if stats:
 		stats.heal(int(round(amount)))
+		current_health = float(stats.current_hp)
+	else:
+		current_health = minf(max_health, current_health + amount)
 	health_changed.emit(current_health, max_health)
 
-func _spawn_damage_number(damage: float, hit_position: Vector3, is_crit: bool = false, is_blocked: bool = false, is_miss: bool = false) -> void:
+func _spawn_damage_number(
+	damage: float,
+	hit_position: Vector3,
+	is_crit: bool = false,
+	is_blocked: bool = false,
+	is_miss: bool = false,
+	is_heal: bool = false,
+	is_thorns: bool = false,
+	is_bleed: bool = false,
+	custom_text: String = ""
+) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
 		return
@@ -123,4 +205,31 @@ func _spawn_damage_number(damage: float, hit_position: Vector3, is_crit: bool = 
 	if fx is Node3D:
 		fx.global_position = spawn_pos + Vector3(0.0, 0.35, 0.0)
 	if fx.has_method("setup"):
-		fx.setup(damage, is_crit, is_blocked, is_miss)
+		fx.setup(damage, is_crit, is_blocked, is_miss, is_heal, is_thorns, is_bleed, custom_text)
+
+func _find_combat_target(node: Node) -> CombatTarget:
+	if node == null:
+		return null
+	var tgt := node.get_node_or_null("CombatTarget") as CombatTarget
+	if tgt:
+		return tgt
+	for child in node.get_children():
+		if child is CombatTarget:
+			return child
+	return null
+
+func _get_status_controller() -> Node:
+	var p := get_parent()
+	if p == null:
+		return null
+	var ctrl := p.get_node_or_null("StatusEffectController")
+	if ctrl:
+		return ctrl
+	for child in p.get_children():
+		if child is StatusEffectControllerScript:
+			return child
+	# Creación automática bajo demanda para máxima resiliencia
+	ctrl = StatusEffectControllerScript.new()
+	ctrl.name = "StatusEffectController"
+	p.add_child(ctrl)
+	return ctrl

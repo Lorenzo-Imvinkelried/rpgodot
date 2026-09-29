@@ -96,6 +96,17 @@ func _process_movement(delta: float) -> void:
 	if config == null:
 		config = DEFAULT_CONFIG
 
+	# Bloqueo total si el jugador se encuentra aturdido (Stun)
+	var status_ctrl := get_node_or_null("StatusEffectController")
+	if status_ctrl and status_ctrl.has_method("is_stunned") and status_ctrl.is_stunned():
+		velocity.x = 0.0
+		velocity.z = 0.0
+		is_moving = false
+		move_and_slide()
+		return
+
+	var move_speed_mult: float = status_ctrl.get_move_speed_multiplier() if (status_ctrl and status_ctrl.has_method("get_move_speed_multiplier")) else 1.0
+
 	# 1. Giro en su eje con A y D (o flechas)
 	var turn_input := 0.0
 	if Input.is_key_pressed(KEY_A) or Input.is_action_pressed("move_left"):
@@ -122,9 +133,9 @@ func _process_movement(delta: float) -> void:
 			# Orientación directa hacia el objetivo
 			rotation.y = atan2(-approach_dir.x, -approach_dir.z)
 
-			# Desplazamiento en línea recta hacia el objetivo
-			velocity.x = approach_dir.x * config.forward_speed
-			velocity.z = approach_dir.z * config.forward_speed
+			# Desplazamiento en línea recta hacia el objetivo ajustado por ralentización
+			velocity.x = approach_dir.x * config.forward_speed * move_speed_mult
+			velocity.z = approach_dir.z * config.forward_speed * move_speed_mult
 			is_moving = true
 			move_and_slide()
 			return
@@ -155,13 +166,13 @@ func _process_movement(delta: float) -> void:
 			rotation.y = camera_pivot.current_yaw
 
 		var forward_dir := -transform.basis.z
-		velocity.x = forward_dir.x * config.forward_speed
-		velocity.z = forward_dir.z * config.forward_speed
+		velocity.x = forward_dir.x * config.forward_speed * move_speed_mult
+		velocity.z = forward_dir.z * config.forward_speed * move_speed_mult
 	elif forward_input < 0.0:
 		# Retroceder hacia atrás SIN rotar el cuerpo ni la cara
 		var forward_dir := -transform.basis.z
-		velocity.x = -forward_dir.x * config.backward_speed
-		velocity.z = -forward_dir.z * config.backward_speed
+		velocity.x = -forward_dir.x * config.backward_speed * move_speed_mult
+		velocity.z = -forward_dir.z * config.backward_speed * move_speed_mult
 	else:
 		# Desaceleración
 		var decel_rate := config.forward_speed * config.deceleration_factor * delta
