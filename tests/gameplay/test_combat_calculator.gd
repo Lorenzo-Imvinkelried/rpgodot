@@ -138,9 +138,33 @@ func _init() -> void:
 
 	print("[OK] Prueba 8: Carga y fábricas desde combat_config.json verificadas.")
 
+	# 9. Prueba de integración: Jugador atacando a Dummy con 200 de defensa
+	var player_target := CombatTarget.new()
+	player_target.target_name = "Player"
+	player_target._ready()
+
+	var dummy_target := CombatTarget.new()
+	dummy_target.target_name = "TrainingDummy"
+	dummy_target._ready()
+
+	var initial_dummy_hp := dummy_target.current_health
+	var combat_res := CombatCalculator.calculate_damage(player_target.get_stats(), dummy_target.get_stats(), true, 0.0, 0)
+	# Con 200 de base_defense + 20 de VIT = 220 defensa.
+	# Ataque = 30. Reducción = 220 / (220 + 115) = 65.67%. Daño = 10 (o 5 si bloquea).
+	if combat_res.total_damage > 12:
+		printerr("FALLO: Con 200 de defensa el daño debería ser <= 12, pero fue: ", combat_res.total_damage)
+		failures += 1
+
+	dummy_target.take_combat_result(combat_res, Vector3.ZERO, null)
+	if dummy_target.current_health != initial_dummy_hp - float(combat_res.total_damage):
+		printerr("FALLO: La salud del dummy no disminuyó en concordancia con el total_damage")
+		failures += 1
+
+	print("[OK] Prueba 9: Mitigación con 200 de defensa verificada exitosamente (Daño recibido: ", combat_res.total_damage, " vs salud inicial ", initial_dummy_hp, ").")
+
 	# Conclusión
 	if failures == 0:
-		print("--- TODAS LAS PRUEBAS (8/8) PASARON EXITOSAMENTE ---")
+		print("--- TODAS LAS PRUEBAS (9/9) PASARON EXITOSAMENTE ---")
 		quit(0)
 	else:
 		printerr("--- HUBO ", failures, " FALLOS EN LAS PRUEBAS ---")

@@ -2,10 +2,12 @@ class_name DamageNumberFX
 extends Label3D
 
 ## Responsabilidad: Efecto visual de números de daño flotantes en combate 3D con animación de rebote, elevación y desvanecimiento.
-## Configuración de fuentes, colores y duraciones parametrizada mediante config/ui_config.json.
+## Muestra estados de impacto: daño normal, crítico, bloqueo o fallo (MISS).
 
 const COLOR_NORMAL := Color(0.99, 0.88, 0.28, 1.0)
 const COLOR_CRIT := Color(1.0, 0.27, 0.2, 1.0)
+const COLOR_BLOCKED := Color(0.4, 0.85, 1.0, 1.0)
+const COLOR_MISS := Color(0.75, 0.82, 0.9, 0.85)
 const OUTLINE_DARK := Color(0.05, 0.06, 0.08, 0.95)
 
 func _ready() -> void:
@@ -17,16 +19,27 @@ func _ready() -> void:
 	outline_size = int(GameConfig.get_ui_value("damage_numbers", "outline_size", 10))
 	outline_modulate = GameConfig.get_color(str(colors_dict.get("outline", "#0d1014")), OUTLINE_DARK)
 
-## Configura el valor de daño a mostrar y dispara la animación de impacto.
-func setup(damage: float, is_crit: bool = false) -> void:
+## Configura el valor de daño o estado a mostrar y dispara la animación de impacto.
+func setup(damage: float, is_crit: bool = false, is_blocked: bool = false, is_miss: bool = false) -> void:
 	var rounded_dmg := int(round(damage))
 	var colors_dict := GameConfig.get_ui_value("damage_numbers", "colors", {}) as Dictionary
 	var col_norm := GameConfig.get_color(str(colors_dict.get("normal", "#fde047")), COLOR_NORMAL)
 	var col_crit := GameConfig.get_color(str(colors_dict.get("crit", "#ff4533")), COLOR_CRIT)
+	var col_blocked := GameConfig.get_color(str(colors_dict.get("blocked", "#67e8f9")), COLOR_BLOCKED)
+	var col_miss := GameConfig.get_color(str(colors_dict.get("miss", "#cbd5e1")), COLOR_MISS)
+
 	var fs_norm := int(GameConfig.get_ui_value("damage_numbers", "font_size_normal", 36))
 	var fs_crit := int(GameConfig.get_ui_value("damage_numbers", "font_size_crit", 44))
 
-	if is_crit:
+	if is_miss:
+		text = "FALLO"
+		modulate = col_miss
+		font_size = fs_norm
+	elif is_blocked:
+		text = "%d 🛡" % rounded_dmg
+		modulate = col_blocked
+		font_size = fs_norm
+	elif is_crit:
 		text = "%d!" % rounded_dmg
 		modulate = col_crit
 		font_size = fs_crit

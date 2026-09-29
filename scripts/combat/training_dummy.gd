@@ -17,9 +17,10 @@ func _ready() -> void:
 			_default_mat = mesh.mesh.surface_get_material(0)
 
 	if combat_target:
-		var dummy_hp := float(GameConfig.get_combat_value("targets", "dummy_max_health", 200.0))
-		combat_target.max_health = dummy_hp
-		combat_target.current_health = dummy_hp
+		var stats := combat_target.get_stats()
+		if stats:
+			combat_target.max_health = float(stats.max_hp)
+			combat_target.current_health = float(stats.current_hp)
 		combat_target.hit_received.connect(_on_hit_received)
 		combat_target.died.connect(_on_dummy_died)
 
