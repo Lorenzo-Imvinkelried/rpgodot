@@ -58,6 +58,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# Click Derecho: Seleccionar objetivo atacable o rotar la cámara orbitalmente
 	if event is InputEventMouseButton:
+		if event.pressed and UIManager.is_mouse_over_ui(get_tree()):
+			return
+
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
 				var parent_node := get_parent() as Node3D

@@ -1,0 +1,224 @@
+[gd_scene load_steps=9 format=3 uid="uid://bv83m1p0f4hyq"]
+
+[ext_resource type="Script" path="res://scripts/ui/hud/player_frame.gd" id="1_pf"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
+bg_color = Color(0.08, 0.09, 0.13, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.24, 0.28, 0.38, 0.95)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_size = 6
+shadow_color = Color(0, 0, 0, 0.45)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_portrait"]
+bg_color = Color(0.14, 0.16, 0.22, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.40, 0.52, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
+bg_color = Color(0.25, 0.06, 0.06, 0.95)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_fill"]
+bg_color = Color(0.18, 0.82, 0.42, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mp_bg"]
+bg_color = Color(0.06, 0.10, 0.20, 0.95)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mp_fill"]
+bg_color = Color(0.18, 0.55, 0.92, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="LabelSettings" id="LabelSettings_bar"]
+font_size = 10
+outline_size = 3
+outline_color = Color(0, 0, 0, 0.9)
+
+[node name="PlayerFrame" type="Control"]
+custom_minimum_size = Vector2(250, 80)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 250.0
+offset_bottom = 80.0
+script = ExtResource("1_pf")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="HBox" type="HBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PortraitBox" type="VBoxContainer" parent="Panel/Margin/HBox"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="PortraitPanel" type="Panel" parent="Panel/Margin/HBox/PortraitBox"]
+custom_minimum_size = Vector2(50, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_portrait")
+
+[node name="PortraitLabel" type="Label" parent="Panel/Margin/HBox/PortraitBox/PortraitPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 22
+text = "⚔"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PortraitRect" type="TextureRect" parent="Panel/Margin/HBox/PortraitBox/PortraitPanel"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LevelLabel" type="Label" parent="Panel/Margin/HBox/PortraitBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.4, 1)
+theme_override_font_sizes/font_size = 11
+text = "Lvl: 1"
+horizontal_alignment = 1
+
+[node name="InfoBox" type="VBoxContainer" parent="Panel/Margin/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="HeaderHBox" type="HBoxContainer" parent="Panel/Margin/HBox/InfoBox"]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="Panel/Margin/HBox/InfoBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Player"
+
+[node name="StatusIconsLabel" type="Label" parent="Panel/Margin/HBox/InfoBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 2
+
+[node name="HealthBar" type="ProgressBar" parent="Panel/Margin/HBox/InfoBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_hp_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_hp_fill")
+value = 100.0
+show_percentage = false
+
+[node name="HealthLabel" type="Label" parent="Panel/Margin/HBox/InfoBox/HealthBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "100 / 100"
+label_settings = SubResource("LabelSettings_bar")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ManaBar" type="ProgressBar" parent="Panel/Margin/HBox/InfoBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_mp_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_mp_fill")
+value = 100.0
+show_percentage = false
+
+[node name="ManaLabel" type="Label" parent="Panel/Margin/HBox/InfoBox/ManaBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "100 / 100"
+label_settings = SubResource("LabelSettings_bar")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TapRow" type="HBoxContainer" parent="Panel/Margin/HBox/InfoBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TapLabel" type="Label" parent="Panel/Margin/HBox/InfoBox/TapRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.7, 0.8, 1)
+theme_override_font_sizes/font_size = 9
+text = "COMBO"
+
+[node name="TapBlock1" type="ColorRect" parent="Panel/Margin/HBox/InfoBox/TapRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(18, 5)
+layout_mode = 2
+color = Color(0.2, 0.22, 0.28, 0.85)
+
+[node name="TapBlock2" type="ColorRect" parent="Panel/Margin/HBox/InfoBox/TapRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(18, 5)
+layout_mode = 2
+color = Color(0.2, 0.22, 0.28, 0.85)
+
+[node name="TapBlock3" type="ColorRect" parent="Panel/Margin/HBox/InfoBox/TapRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(18, 5)
+layout_mode = 2
+color = Color(0.2, 0.22, 0.28, 0.85)

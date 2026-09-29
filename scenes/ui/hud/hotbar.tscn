@@ -1,0 +1,822 @@
+[gd_scene format=3 uid="uid://c7m84d3b6yvew"]
+
+[ext_resource type="Script" path="res://scripts/ui/hud/hotbar.gd" id="1_hb"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_bg"]
+bg_color = Color(0.06, 0.07, 0.10, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.24, 0.28, 0.38, 0.95)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_size = 6
+shadow_color = Color(0, 0, 0, 0.45)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
+bg_color = Color(0.12, 0.14, 0.19, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.38, 0.50, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_active"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.8, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="LabelSettings" id="LabelSettings_key"]
+font_size = 9
+font_color = Color(0.85, 0.88, 0.95, 1)
+outline_size = 2
+outline_color = Color(0, 0, 0, 0.95)
+
+[sub_resource type="LabelSettings" id="LabelSettings_cd"]
+font_size = 11
+font_color = Color(1, 0.85, 0.25, 1)
+outline_size = 3
+outline_color = Color(0, 0, 0, 0.95)
+
+[node name="Hotbar" type="Control"]
+custom_minimum_size = Vector2(504, 52)
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -252.0
+offset_top = -56.0
+offset_right = 252.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("1_hb")
+
+[node name="MainPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bar_bg")
+
+[node name="Margin" type="MarginContainer" parent="MainPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="SlotsContainer" type="HBoxContainer" parent="MainPanel/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="Slot1" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "⚔"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot1"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "1"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot1"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot1"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot1"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot2" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "💨"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot2"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 26.0
+offset_bottom = 15.0
+text = "Space"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot2"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot2"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot2"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot3" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "🛡"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot3"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 24.0
+offset_bottom = 15.0
+text = "Shift"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot3"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot3"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot3"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot4" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot4"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "⚡"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot4"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "4"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot4"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot4"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot4"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot5" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot5"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "🔥"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot5"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "5"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot5"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot5"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot5"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot6" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot6"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "❄"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot6"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "6"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot6"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot6"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot6"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot7" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot7"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "✨"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot7"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "7"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot7"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot7"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot7"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot8" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot8"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "☄"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot8"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "8"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot8"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot8"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot8"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot9" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot9"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "🌪"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot9"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "9"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot9"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot9"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot9"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot10" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot10"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "🩸"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot10"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "0"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot10"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot10"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot10"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot11" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot11"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "🧪"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot11"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "-"
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot11"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot11"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot11"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="Slot12" type="Panel" parent="MainPanel/Margin/SlotsContainer"]
+custom_minimum_size = Vector2(37, 40)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="IconLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot12"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
+text = "🍷"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="KeyLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot12"]
+layout_mode = 1
+offset_left = 3.0
+offset_top = 2.0
+offset_right = 16.0
+offset_bottom = 15.0
+text = "="
+label_settings = SubResource("LabelSettings_key")
+
+[node name="CooldownMask" type="ColorRect" parent="MainPanel/Margin/SlotsContainer/Slot12"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="CooldownLabel" type="Label" parent="MainPanel/Margin/SlotsContainer/Slot12"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0.8s"
+label_settings = SubResource("LabelSettings_cd")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveIndicator" type="Panel" parent="MainPanel/Margin/SlotsContainer/Slot12"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="StunOverlay" type="Panel" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StunLabel" type="Label" parent="StunOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+text = "🔒 ATURDIDO"
+horizontal_alignment = 1
+vertical_alignment = 1

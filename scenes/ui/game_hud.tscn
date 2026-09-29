@@ -1,14 +1,25 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=9 format=3 uid="uid://c6v2r8g7pm4yk"]
 
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/player_frame.tscn" id="2_pf"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/target_frame.tscn" id="3_tf"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/hotbar.tscn" id="4_hb"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/exp_bar.tscn" id="5_eb"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/cast_bar.tscn" id="6_cb"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/quick_buttons.tscn" id="7_qb"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.12, 0.14, 0.18, 0.92)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_size = 6
+bg_color = Color(0.10, 0.12, 0.16, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.28, 0.38, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_size = 4
 shadow_color = Color(0, 0, 0, 0.35)
 
 [node name="GameHUD" type="Control"]
@@ -21,42 +32,85 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_hud")
 
-[node name="MarginContainer" type="MarginContainer" parent="."]
+[node name="PlayerFrame" parent="." instance=ExtResource("2_pf")]
+unique_name_in_owner = true
 layout_mode = 0
-offset_right = 260.0
-offset_bottom = 150.0
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 16
+offset_left = 14.0
+offset_top = 14.0
+offset_right = 264.0
+offset_bottom = 94.0
 
-[node name="PanelContainer" type="PanelContainer" parent="MarginContainer"]
+[node name="TargetFrame" parent="." instance=ExtResource("3_tf")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_top = 14.0
+offset_bottom = 86.0
+
+[node name="CastBar" parent="." instance=ExtResource("6_cb")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_top = -98.0
+offset_bottom = -78.0
+
+[node name="ExpBar" parent="." instance=ExtResource("5_eb")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_top = -72.0
+offset_bottom = -58.0
+
+[node name="Hotbar" parent="." instance=ExtResource("4_hb")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_top = -54.0
+offset_bottom = -6.0
+
+[node name="QuickButtons" parent="." instance=ExtResource("7_qb")]
+unique_name_in_owner = true
+layout_mode = 1
+offset_left = -106.0
+offset_top = -58.0
+offset_right = -14.0
+offset_bottom = -16.0
+
+[node name="NetworkPanel" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -210.0
+offset_top = 14.0
+offset_right = -14.0
+offset_bottom = 104.0
+grow_horizontal = 0
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="PanelContainer" type="PanelContainer" parent="NetworkPanel"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/PanelContainer"]
+[node name="Margin" type="MarginContainer" parent="NetworkPanel/PanelContainer"]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/PanelContainer/MarginContainer"]
+[node name="VBox" type="VBoxContainer" parent="NetworkPanel/PanelContainer/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
-[node name="HUDStatus" type="Label" parent="MarginContainer/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="HUDStatus" type="Label" parent="NetworkPanel/PanelContainer/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 11
 text = "Conectado..."
 
-[node name="ControlsInfo" type="Label" parent="MarginContainer/PanelContainer/MarginContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.8, 1)
-theme_override_font_sizes/font_size = 12
-text = "• WASD / Flechas: Moverte
-• ESC: Desconectar"
-
-[node name="DisconnectButton" type="Button" parent="MarginContainer/PanelContainer/MarginContainer/VBoxContainer"]
+[node name="DisconnectButton" type="Button" parent="NetworkPanel/PanelContainer/Margin/VBox"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 26)
 layout_mode = 2
+theme_override_font_sizes/font_size = 11
 text = "Desconectar"

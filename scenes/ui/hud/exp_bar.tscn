@@ -1,0 +1,80 @@
+[gd_scene load_steps=6 format=3 uid="uid://c5e317c8pjyv1"]
+
+[ext_resource type="Script" path="res://scripts/ui/hud/exp_bar.gd" id="1_eb"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.06, 0.07, 0.10, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.28, 0.38, 0.9)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_bar_bg"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fill"]
+bg_color = Color(0.60, 0.27, 0.88, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="LabelSettings" id="LabelSettings_exp"]
+font_size = 10
+outline_size = 3
+outline_color = Color(0, 0, 0, 0.95)
+
+[node name="ExpBar" type="Control"]
+custom_minimum_size = Vector2(480, 16)
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -68.0
+offset_right = 240.0
+offset_bottom = -52.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("1_eb")
+
+[node name="BgPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+
+[node name="ProgressBar" type="ProgressBar" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/background = SubResource("StyleBoxEmpty_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_fill")
+value = 45.0
+show_percentage = false
+
+[node name="ExpLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0 / 1000 (0.0%)"
+label_settings = SubResource("LabelSettings_exp")
+horizontal_alignment = 1
+vertical_alignment = 1

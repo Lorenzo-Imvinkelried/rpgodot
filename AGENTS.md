@@ -200,9 +200,9 @@ rpgodot/
 │   └── tools/               # Scripts de desarrollo, editores y generadores de escenas
 │
 └── tests/                   # Pruebas automatizadas (unitarias y de integración)
-    ├── gameplay/
-    ├── network/
-    └── utilities/
+	├── gameplay/
+	├── network/
+	└── utilities/
 ```
 
 ## 13. Límites de sistemas y reglas de desacoplamiento
@@ -245,5 +245,3 @@ Antes de crear un archivo o modificar uno existente:
 2. **Verificar el contexto de ejecución:** ¿Este script correrá en el servidor dedicado, en el cliente, o en ambos? Si corre en el servidor, no puede contener lógica visual ni de sonido.
 3. **Comprobar si existe un componente análogo:** Si vas a añadir una habilidad a un enemigo, verifica si `gameplay/skills` o `gameplay/combat` ya disponen de la estructura antes de inventar una solución paralela.
 4. **Tipado estático razonable:** Emplear tipado estático explícito en firmas de funciones públicas, APIs de dominio y parámetros clave (`var target: Node3D = null`, `func calculate_damage(...) -> int:`). Evitar caer en sobre-ingeniería o tipados enrevesados para scripts utilitarios simples o expresiones efímeras.
-
-
