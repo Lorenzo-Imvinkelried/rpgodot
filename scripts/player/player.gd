@@ -16,6 +16,7 @@ const DEFAULT_CONFIG = preload("res://resources/player/default_player_config.tre
 @onready var combat_controller: CombatController = get_node_or_null("CombatController")
 @onready var combat_target: CombatTarget = get_node_or_null("CombatTarget")
 @onready var inventory_controller: InventoryController = get_node_or_null("InventoryController")
+@onready var equipment_controller: EquipmentController = get_node_or_null("EquipmentController")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var _was_forward_pressed: bool = false
@@ -29,6 +30,8 @@ var _was_space_pressed: bool = false
 
 func _enter_tree() -> void:
 	var peer_id := name.to_int()
+	if peer_id <= 0:
+		peer_id = 1
 	set_multiplayer_authority(peer_id, true)
 	$MultiplayerSynchronizer.set_multiplayer_authority(peer_id)
 
@@ -54,12 +57,25 @@ func _ready() -> void:
 		add_child(inventory_controller)
 		_setup_starter_inventory()
 
+	if equipment_controller == null:
+		equipment_controller = EquipmentController.new()
+		equipment_controller.name = "EquipmentController"
+		add_child(equipment_controller)
+		_setup_starter_equipment()
+
 func _setup_starter_inventory() -> void:
 	if inventory_controller:
 		inventory_controller.add_item(ItemData.create_potion("Poción de Salud", 60.0, 0.0, 10))
 		inventory_controller.add_item(ItemData.create_potion("Poción de Maná", 0.0, 40.0, 5))
 		inventory_controller.add_item(ItemData.create_weapon("Espada Rúnica", 45, 7, ItemData.ItemRarity.RARE))
 		inventory_controller.add_item(ItemData.create_armor("Escudo de Roble", 25, ItemData.EquipmentSlot.OFF_HAND, 0, ItemData.ItemRarity.UNCOMMON))
+
+func _setup_starter_equipment() -> void:
+	if equipment_controller:
+		var starter_sword := ItemData.create_weapon("Espada de Acero", 30, 1, ItemData.ItemRarity.COMMON)
+		equipment_controller.equip_item(starter_sword, ItemData.EquipmentSlot.MAIN_HAND, inventory_controller)
+		if combat_target and combat_target.get_stats():
+			equipment_controller.apply_equipment_stats_to(combat_target.get_stats())
 
 func _on_player_died() -> void:
 	if not is_multiplayer_authority():
@@ -72,7 +88,7 @@ func _on_player_died() -> void:
 
 ## Establece un objetivo de combate para auto-aproximación y ataque.
 func set_combat_target(target: Node3D) -> void:
-	if is_inside_tree() and not is_multiplayer_authority():
+	if is_inside_tree() and multiplayer.has_multiplayer_peer() and not is_multiplayer_authority():
 		return
 	if combat_controller:
 		combat_controller.set_target(target)
@@ -157,7 +173,7 @@ func _process_movement(delta: float) -> void:
 		forward_input -= 1.0
 
 	# 3. Guardia Activa con Escudo (Active Shield Guard - Shift)
-	var wants_guard := Input.is_key_pressed(KEY_SHIFT) or Input.is_action_pressed("guard")
+	var wants_guard := Input.is_key_pressed(KEY_SHIFT) or (InputMap.has_action("guard") and Input.is_action_pressed("guard"))
 	if wants_guard:
 		if combat_target and not combat_target.is_guarding:
 			combat_target.is_guarding = true

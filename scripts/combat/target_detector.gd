@@ -33,18 +33,16 @@ static func find_target_at_screen_pos(camera: Camera3D, screen_pos: Vector2, exc
 	return null
 
 static func _resolve_target_entity(node: Node) -> Node3D:
-	# 1. Si el propio nodo o algún ancestro/hijo tiene CombatTarget
 	var curr: Node = node
 	while curr != null and not (curr is Viewport):
 		if curr.is_in_group("targetable"):
+			if curr is CombatTarget:
+				return curr.get_parent() as Node3D
 			return curr as Node3D
-		for child in curr.get_children():
-			if child is CombatTarget:
-				return curr as Node3D
+		if curr.has_node("CombatTarget"):
+			return curr as Node3D
+		if curr is CharacterBody3D and curr.name != "Floor":
+			return curr as Node3D
 		curr = curr.get_parent()
-
-	# 2. Si es otro CharacterBody3D (ej. otro jugador o enemigo)
-	if node is CharacterBody3D:
-		return node as Node3D
 
 	return null

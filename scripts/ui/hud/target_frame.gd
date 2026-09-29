@@ -153,3 +153,10 @@ func _find_status_controller(node: Node) -> StatusEffectController:
 		if child is StatusEffectController:
 			return child
 	return null
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+		if _current_target_node != null:
+			inspect_requested.emit(_current_target_node)
+			accept_event()
+

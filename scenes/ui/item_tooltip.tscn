@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://d1tooltip78923"]
+[gd_scene format=3 uid="uid://ba7x4x6flle2u"]
 
 [ext_resource type="Script" path="res://scripts/ui/item_tooltip.gd" id="1_tt"]
 

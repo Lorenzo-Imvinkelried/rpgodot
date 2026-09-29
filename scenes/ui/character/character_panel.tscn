@@ -1,0 +1,113 @@
+[gd_scene load_steps=5 format=3 uid="uid://char_panel8301"]
+
+[ext_resource type="Script" path="res://scripts/ui/character/character_panel.gd" id="1_cpanel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/item_tooltip.tscn" id="2_tt"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.09, 0.11, 0.15, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.32, 0.44, 0.95)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_size = 10
+shadow_color = Color(0, 0, 0, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title"]
+bg_color = Color(0.14, 0.16, 0.22, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+
+[node name="CharacterPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(430, 360)
+offset_right = 430.0
+offset_bottom = 360.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+script = ExtResource("1_cpanel")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TitleBar" type="PanelContainer" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_title")
+
+[node name="Margin" type="MarginContainer" parent="VBox/TitleBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_right = 8
+
+[node name="HBox" type="HBoxContainer" parent="VBox/TitleBar/Margin"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="VBox/TitleBar/Margin/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "👤 Personaje & Equipamiento"
+
+[node name="CloseButton" type="Button" parent="VBox/TitleBar/Margin/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(22, 22)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "✕"
+
+[node name="BodyMargin" type="MarginContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="ColumnsHBox" type="HBoxContainer" parent="VBox/BodyMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="StatsScroll" type="ScrollContainer" parent="VBox/BodyMargin/ColumnsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+
+[node name="StatsLabelsContainer" type="VBoxContainer" parent="VBox/BodyMargin/ColumnsHBox/StatsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="VSeparator" type="VSeparator" parent="VBox/BodyMargin/ColumnsHBox"]
+layout_mode = 2
+
+[node name="EquipContainer" type="VBoxContainer" parent="VBox/BodyMargin/ColumnsHBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="DollLabel" type="Label" parent="VBox/BodyMargin/ColumnsHBox/EquipContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.75, 0.25, 1)
+theme_override_font_sizes/font_size = 11
+text = "— Ranuras de Equipo —"
+horizontal_alignment = 1
+
+[node name="EquipGrid" type="GridContainer" parent="VBox/BodyMargin/ColumnsHBox/EquipContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 3
+
+[node name="ItemTooltip" parent="." instance=ExtResource("2_tt")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2

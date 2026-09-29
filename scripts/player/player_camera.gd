@@ -61,7 +61,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed and UIManager.is_mouse_over_ui(get_tree()):
 			return
 
-		if event.button_index == MOUSE_BUTTON_RIGHT:
+		# Click Izquierdo: Seleccionar objetivo en el mundo 3D (mobs, dummies, jugadores)
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			var parent_node := get_parent() as Node3D
+			var exclude: Array[RID] = []
+			if parent_node is CollisionObject3D:
+				exclude.append((parent_node as CollisionObject3D).get_rid())
+
+			var hit_target := TargetDetectorScript.find_target_at_screen_pos(camera, event.position, exclude)
+			if hit_target != null and parent_node and parent_node.has_method("set_combat_target"):
+				parent_node.set_combat_target(hit_target)
+				return
+
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
 				var parent_node := get_parent() as Node3D
 				var exclude: Array[RID] = []
@@ -96,6 +108,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		var max_pitch_rad := deg_to_rad(max_pitch_degrees)
 		current_pitch = clamp(current_pitch - event.relative.y * mouse_sensitivity, min_pitch_rad, max_pitch_rad)
 		_apply_rotation()
+
+	# Tecla Escape: Deseleccionar objetivo de combate actual
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		var parent_node := get_parent() as Node3D
+		if parent_node:
+			var combat_ctrl = parent_node.get_node_or_null("CombatController")
+			if combat_ctrl and combat_ctrl.current_target != null:
+				combat_ctrl.clear_target()
 
 func _process(delta: float) -> void:
 	if not camera.current:

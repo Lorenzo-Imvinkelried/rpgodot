@@ -14,6 +14,7 @@ signal disconnect_requested
 @onready var exp_bar: ExpBar = %ExpBar
 @onready var quick_buttons: QuickButtons = %QuickButtons
 @onready var inventory_panel: InventoryPanel = %InventoryPanel
+@onready var character_panel: CharacterPanel = %CharacterPanel
 @onready var status_label: Label = %HUDStatus
 @onready var disconnect_button: Button = %DisconnectButton
 
@@ -26,9 +27,17 @@ func _ready() -> void:
 
 	if quick_buttons:
 		quick_buttons.inventory_toggle_requested.connect(_on_inventory_toggle_requested)
+		quick_buttons.character_sheet_toggle_requested.connect(_on_character_sheet_toggle_requested)
 
 	if UIManager.instance:
 		UIManager.instance.inventory_toggle_requested.connect(_on_inventory_toggle_requested)
+		UIManager.instance.character_sheet_toggle_requested.connect(_on_character_sheet_toggle_requested)
+
+	if target_frame:
+		target_frame.inspect_requested.connect(_on_target_inspect_requested)
+
+	if inventory_panel:
+		inventory_panel.item_equip_requested.connect(_on_item_equip_requested)
 
 	if DragDropManager.instance == null:
 		var ddm := DragDropManager.new()
@@ -56,6 +65,14 @@ func bind_player(player_node: Node) -> void:
 		var tgt_ctrl := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
 		if inv_ctrl:
 			inventory_panel.bind_inventory(inv_ctrl, tgt_ctrl)
+
+	if character_panel:
+		var inv_ctrl := _bound_player.get_node_or_null("InventoryController") as InventoryController
+		var eq_ctrl := _bound_player.get_node_or_null("EquipmentController") as EquipmentController
+		var tgt_ctrl := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
+		var stats := tgt_ctrl.get_stats() if tgt_ctrl else null
+		if stats and eq_ctrl:
+			character_panel.bind_character(stats, eq_ctrl, inv_ctrl, tgt_ctrl)
 
 	var target_comp := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
 	if target_comp:
@@ -105,4 +122,23 @@ func _on_disconnect_pressed() -> void:
 func _on_inventory_toggle_requested() -> void:
 	if inventory_panel:
 		inventory_panel.toggle_panel()
+
+func _on_character_sheet_toggle_requested() -> void:
+	if character_panel:
+		character_panel.toggle_panel()
+
+func _on_target_inspect_requested(target_node: Node) -> void:
+	if character_panel and is_instance_valid(target_node):
+		character_panel.inspect_target(target_node)
+
+func _on_item_equip_requested(item: ItemData, slot_idx: int) -> void:
+	if _bound_player == null or item == null:
+		return
+	var eq_ctrl := _bound_player.get_node_or_null("EquipmentController") as EquipmentController
+	var inv_ctrl := _bound_player.get_node_or_null("InventoryController") as InventoryController
+	if eq_ctrl and inv_ctrl:
+		var ok := eq_ctrl.equip_item(item, ItemData.EquipmentSlot.NONE, inv_ctrl)
+		if ok:
+			inv_ctrl.remove_item_at(slot_idx, item.stack_count)
+
 

@@ -1,0 +1,46 @@
+[gd_scene load_steps=3 format=3 uid="uid://d3eq_slot82914"]
+
+[ext_resource type="Script" path="res://scripts/ui/character/equipment_slot_ui.gd" id="1_eqslot"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
+bg_color = Color(0.10, 0.12, 0.16, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.28, 0.38, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="EquipmentSlotUI" type="PanelContainer"]
+custom_minimum_size = Vector2(46, 46)
+offset_right = 46.0
+offset_bottom = 46.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+script = ExtResource("1_eqslot")
+
+[node name="AuraRect" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 2
+color = Color(1, 0.8, 0.2, 0.25)
+
+[node name="IconLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SlotTitleLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.50, 0.60, 0.8)
+theme_override_font_sizes/font_size = 8
+text = "Casco"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
