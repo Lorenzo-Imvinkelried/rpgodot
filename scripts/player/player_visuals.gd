@@ -31,6 +31,8 @@ var is_attacking_anim: bool = false
 
 func _ready() -> void:
 	_setup_anim_player()
+	if character_model:
+		GhostSlashFXScript.prewarm(get_tree(), character_model)
 
 func configure_visuals(peer_id: int, is_local: bool) -> void:
 	if health_bar:
@@ -88,7 +90,8 @@ func play_attack(custom_speed_scale: float = 1.0) -> void:
 func spawn_ghost_slash(base_speed_scale: float = 1.0, hit_index: int = 1) -> void:
 	if character_model == null:
 		return
-	GhostSlashFXScript.create(character_model, global_transform, hit_index, base_speed_scale)
+	GhostSlashFXScript.spawn(character_model, global_transform, hit_index, base_speed_scale, _anim_attack)
+
 
 
 
