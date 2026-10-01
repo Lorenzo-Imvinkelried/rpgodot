@@ -63,10 +63,24 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	if caster_stats != null and mana_cost > 0:
 		caster_stats.current_mp = maxi(0, caster_stats.current_mp - mana_cost)
 
-	# Animación en el lanzador con velocidad personalizada
+	# Animación en el lanzador con velocidad basada en su velocidad actual de ataque
 	var visuals: Node = caster.get_node_or_null("Visuals")
 	if visuals and visuals.has_method("play_attack"):
-		visuals.play_attack(anim_speed_multiplier)
+		var current_atk_spd: float = 1.4
+		if caster_stats != null:
+			current_atk_spd = caster_stats.attack_speed
+		var status_ctrl: Node = caster.get_node_or_null("StatusEffectController")
+		if status_ctrl and status_ctrl.has_method("get_attack_speed_multiplier"):
+			current_atk_spd *= status_ctrl.get_attack_speed_multiplier()
+
+		var base_anim_scale: float = 1.0
+		if visuals.has_method("get_attack_speed_scale"):
+			base_anim_scale = visuals.get_attack_speed_scale(current_atk_spd)
+		else:
+			base_anim_scale = current_atk_spd
+
+		var final_speed_scale: float = maxf(1.5, base_anim_scale * anim_speed_multiplier)
+		visuals.play_attack(final_speed_scale)
 
 	# Registro de estado de combate en el lanzador
 	var caster_ct := caster.get_node_or_null("CombatTarget") as CombatTarget

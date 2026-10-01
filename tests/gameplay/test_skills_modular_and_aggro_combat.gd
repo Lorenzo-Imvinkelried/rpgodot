@@ -96,7 +96,13 @@ func _run_tests() -> void:
 	var dmg_dealt := hp_before - hp_after
 	assert(dmg_dealt > float(p_stats.attack) * 1.3, "El golpe básico potenciado debe infligir daño aumentado (obtenido: %.1f)" % dmg_dealt)
 	assert(skill_ctrl._cooldowns.has(0), "Slot 0 debe registrar cooldown tras ejecutarse")
-	print("[OK] Prueba 2: Skill 1 (Golpe Potente) ejecutada con éxito, mayor daño y cooldown.")
+
+	# Re-intentar activación en cooldown: DEBE RECHAZARSE Y NO ATACAR
+	var hp_during_cd := float(d_stats.current_hp)
+	var cast_on_cd := skill_ctrl.activate_slot(0, dummy, null, null)
+	assert(cast_on_cd == false, "Skill 1 no debe activarse ni iniciar ataques si está en cooldown")
+	assert(float(d_stats.current_hp) == hp_during_cd, "No debe infligir daño ni iniciar golpes al hacer clic en cooldown")
+	print("[OK] Prueba 2: Skill 1 (Golpe Potente) ejecutada con éxito y rechaza ataques al estar en cooldown.")
 
 	# --------------------------------------------------------------------------
 	# PRUEBA 3: Sistema de Aggro Pool (Threat Table con Umbral de Histéresis)

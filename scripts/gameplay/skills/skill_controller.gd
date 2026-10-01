@@ -146,41 +146,35 @@ func activate_slot(slot_idx: int, target: Node3D = null, cast_bar: Control = nul
 func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 	var skill: BaseSkill = _skills.get(0, null)
 	if skill == null:
-		if _parent_body and _parent_body.has_method("attack_target"):
-			_parent_body.attack_target(target)
-		return true
+		return false
 
-	# Si no se pasó objetivo explícito, tomar el objetivo actual de combate
+	# 1. Comprobación de Enfriamiento: NUNCA atacar ni activar autoataque si está en cooldown
+	if _cooldowns.has(0) and _cooldowns[0] > 0.0:
+		skill_cast_failed.emit("En enfriamiento")
+		return false
+
+	# 2. Si no se pasó objetivo explícito, tomar el objetivo actual de combate
 	var combat_ctrl: Node = _parent_body.get_node_or_null("CombatController") if _parent_body else null
 	if target == null and combat_ctrl and "current_target" in combat_ctrl:
 		target = combat_ctrl.current_target
 
-	# Si no hay objetivo, delegar aproximación al controller
-	if target == null:
-		if _parent_body and _parent_body.has_method("attack_target"):
-			_parent_body.attack_target(null)
-		return true
+	# 3. Comprobación de existencia del objetivo
+	if target == null or not is_instance_valid(target):
+		skill_cast_failed.emit("Sin objetivo seleccionado")
+		return false
 
-	# Si está fuera de alcance melee, aproximar
+	# 4. Comprobación de Rango
 	var dist := _parent_body.global_position.distance_to(target.global_position)
 	if dist > skill.range_distance:
-		if _parent_body and _parent_body.has_method("attack_target"):
-			_parent_body.attack_target(target)
-		return true
+		skill_cast_failed.emit("Objetivo fuera de alcance")
+		return false
 
-	# Si está en enfriamiento, ejecutar golpe básico ordinario de autoataque
-	if _cooldowns.has(0) and _cooldowns[0] > 0.0:
-		if _parent_body and _parent_body.has_method("attack_target"):
-			_parent_body.attack_target(target)
-		return true
-
-	# Validar maná
+	# 5. Validar maná
 	var caster_ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget if _parent_body else null
 	var caster_stats: CharacterStats = caster_ct.get_stats() if caster_ct else null
 	if caster_stats and caster_stats.current_mp < skill.mana_cost:
-		if _parent_body and _parent_body.has_method("attack_target"):
-			_parent_body.attack_target(target)
-		return true
+		skill_cast_failed.emit("Maná insuficiente")
+		return false
 
 	_execute_skill(skill, 0, target, hotbar)
 	return true
