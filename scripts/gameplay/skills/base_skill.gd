@@ -105,12 +105,12 @@ func _execute_single(caster: Node3D, target: Node3D, caster_stats: CharacterStat
 	if target.has_method("on_aggroed_by"):
 		target.on_aggroed_by(caster)
 	if "aggro_pool" in target and target.aggro_pool != null:
-		target.aggro_pool.add_threat(caster, dmg_result.damage * threat_multiplier)
+		target.aggro_pool.add_threat(caster, float(dmg_result.total_damage) * threat_multiplier)
 
 	# Efectos de estado
 	_apply_status_effect(target)
 
-	return { "success": true, "damage": dmg_result.damage, "is_crit": dmg_result.is_crit }
+	return { "success": true, "damage": dmg_result.total_damage, "is_crit": dmg_result.is_crit }
 
 func _execute_aoe(caster: Node3D, caster_stats: CharacterStats, tree: SceneTree) -> Dictionary:
 	if tree == null and caster != null:

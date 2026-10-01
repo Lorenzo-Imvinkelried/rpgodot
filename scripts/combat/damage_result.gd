@@ -12,6 +12,12 @@ var is_miss: bool = false
 var is_thorns: bool = false
 var is_bleed: bool = false
 
+var damage: int:
+	get:
+		return total_damage
+	set(val):
+		total_damage = val
+
 func _to_string() -> String:
 	return "[DamageResult: total=%d (phys=%d, true=%d) crit=%s blocked=%s miss=%s thorns=%s bleed=%s]" % [
 		total_damage, physical_damage, true_damage,
