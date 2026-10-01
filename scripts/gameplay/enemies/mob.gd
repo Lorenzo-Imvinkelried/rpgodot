@@ -491,6 +491,21 @@ func is_alive() -> bool:
 func is_removable() -> bool:
 	return mCurrentState == State.REMOVABLE
 
+## Retorna el radio horizontal efectivo de la entidad según su forma de colisión y escala.
+func get_bounding_radius() -> float:
+	if collision_shape and collision_shape.shape:
+		var h_scale := maxf(absf(scale.x), absf(scale.z))
+		if collision_shape.shape is CapsuleShape3D:
+			return (collision_shape.shape as CapsuleShape3D).radius * h_scale
+		elif collision_shape.shape is BoxShape3D:
+			var box := collision_shape.shape as BoxShape3D
+			return maxf(box.size.x, box.size.z) * 0.5 * h_scale
+		elif collision_shape.shape is CylinderShape3D:
+			return (collision_shape.shape as CylinderShape3D).radius * h_scale
+		elif collision_shape.shape is SphereShape3D:
+			return (collision_shape.shape as SphereShape3D).radius * h_scale
+	return 0.45 * maxf(absf(scale.x), absf(scale.z))
+
 # ==============================================================================
 # PERCEPCIÓN SENSORIAL Y AGRO SOCIAL (Sección 7)
 # ==============================================================================

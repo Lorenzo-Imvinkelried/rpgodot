@@ -75,6 +75,8 @@ func _ready() -> void:
 			combat_controller.target_lost.connect(func():
 				if _target_indicator and _target_indicator.has_method("clear_target"):
 					_target_indicator.clear_target()
+				if visuals and visuals.has_method("stop_attack_and_idle"):
+					visuals.stop_attack_and_idle()
 			)
 
 	if combat_target:

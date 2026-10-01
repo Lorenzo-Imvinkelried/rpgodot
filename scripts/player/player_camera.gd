@@ -92,13 +92,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 				var hit_target := TargetDetectorScript.find_target_at_screen_pos(camera, event.position, exclude)
 				if hit_target != null and parent_node:
-					# Si el mob ya estaba seleccionado previamente, el click derecho inicia el ataque
-					if parent_node.has_method("get_combat_target") and parent_node.get_combat_target() == hit_target:
-						if parent_node.has_method("attack_target"):
-							parent_node.attack_target(hit_target)
-					elif parent_node.has_method("select_target"):
-						# Si no estaba seleccionado, solamente lo selecciona sin correr a pegarle
-						parent_node.select_target(hit_target)
+					# Con un solo click derecho sobre el objetivo, ir inmediatamente a atacarlo
+					if parent_node.has_method("attack_target"):
+						parent_node.attack_target(hit_target)
 					elif parent_node.has_method("set_combat_target"):
 						parent_node.set_combat_target(hit_target)
 					is_rmb_held = false

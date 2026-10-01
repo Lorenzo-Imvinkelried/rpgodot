@@ -23,49 +23,135 @@ var state: State = State.IDLE
 var _time_since_last_attack: float = 999.0
 var _parent_body: CharacterBody3D = null
 var _pending_impacts: Array[Dictionary] = []
+var _target_combat_target: CombatTarget = null
 
 func _ready() -> void:
 	if combat_config == null:
 		combat_config = DEFAULT_COMBAT_CONFIG.duplicate()
 	if combat_config.has_method("apply_json_overrides"):
 		combat_config.apply_json_overrides()
-	_parent_body = get_parent() as CharacterBody3D
+	_get_parent_body()
 	get_stats()
+
+func _get_parent_body() -> CharacterBody3D:
+	if _parent_body == null or not is_instance_valid(_parent_body):
+		_parent_body = get_parent() as CharacterBody3D
+	return _parent_body
 
 ## Obtiene o inicializa las estadísticas de combate del atacante
 func get_stats() -> CharacterStats:
 	if stats != null:
 		return stats
-	if _parent_body != null:
-		var sibling_target := _parent_body.get_node_or_null("CombatTarget") as CombatTarget
+	var p := _get_parent_body()
+	if p != null:
+		var sibling_target := p.get_node_or_null("CombatTarget") as CombatTarget
 		if sibling_target and sibling_target.get_stats() != null:
 			stats = sibling_target.get_stats()
 			return stats
 	stats = CharacterStats.create_player_default()
 	return stats
 
+## Calcula el radio físico horizontal del objetivo para ajustar el rango de ataque superficie-a-superficie.
+static func get_target_bounding_radius(target_node: Node3D) -> float:
+	if not is_instance_valid(target_node):
+		return 0.0
+
+	if target_node.has_method("get_bounding_radius"):
+		return float(target_node.get_bounding_radius())
+
+	# 1. Buscar CollisionShape3D en el objetivo
+	var col_shape := target_node.find_child("CollisionShape3D", true, false) as CollisionShape3D
+	if col_shape and col_shape.shape:
+		var global_scale := target_node.global_transform.basis.get_scale()
+		var h_scale := maxf(absf(global_scale.x), absf(global_scale.z))
+
+		if col_shape.shape is CapsuleShape3D:
+			return (col_shape.shape as CapsuleShape3D).radius * h_scale
+		elif col_shape.shape is CylinderShape3D:
+			return (col_shape.shape as CylinderShape3D).radius * h_scale
+		elif col_shape.shape is SphereShape3D:
+			return (col_shape.shape as SphereShape3D).radius * h_scale
+		elif col_shape.shape is BoxShape3D:
+			var box := col_shape.shape as BoxShape3D
+			return maxf(box.size.x, box.size.z) * 0.5 * h_scale
+
+	# 2. Si no hay colisión, buscar MeshInstance3D para calcular AABB
+	var mesh_inst := target_node.find_child("*Mesh*", true, false) as MeshInstance3D
+	if mesh_inst and mesh_inst.mesh:
+		var aabb := mesh_inst.mesh.get_aabb()
+		var global_scale := target_node.global_transform.basis.get_scale()
+		var h_scale := maxf(absf(global_scale.x), absf(global_scale.z))
+		return maxf(aabb.size.x, aabb.size.z) * 0.5 * h_scale
+
+	return 0.45
+
+## Calcula dinámicamente el rango efectivo de ataque considerando el radio físico y escala del objetivo.
+## Esto previene que enemigos de gran tamaño (como jefes o dragones) bloqueen físicamente al atacante antes de entrar en rango.
+func get_effective_attack_range(target_node: Node3D = null) -> float:
+	var tgt := target_node if target_node != null else current_target
+	var base_range: float = combat_config.attack_range if combat_config else 1.8
+	if not is_instance_valid(tgt):
+		return base_range
+
+	var target_radius := get_target_bounding_radius(tgt)
+	return base_range + target_radius
+
+## Determina si el objetivo sigue con vida y activo para combate
+static func is_target_alive(tgt: Node3D) -> bool:
+	if not is_instance_valid(tgt) or tgt.is_queued_for_deletion():
+		return false
+	if tgt.has_method("is_alive") and not tgt.is_alive():
+		return false
+	var ct := tgt.get_node_or_null("CombatTarget") as CombatTarget
+	if ct:
+		if ct.current_health <= 0.0:
+			return false
+		if ct.has_method("is_dead") and ct.is_dead():
+			return false
+	return true
+
+func _connect_target(new_target: Node3D) -> void:
+	_disconnect_target()
+	current_target = new_target
+	if is_instance_valid(new_target):
+		_target_combat_target = new_target.get_node_or_null("CombatTarget") as CombatTarget
+		if _target_combat_target and _target_combat_target.has_signal("died"):
+			if not _target_combat_target.died.is_connected(_on_target_died):
+				_target_combat_target.died.connect(_on_target_died)
+
+func _disconnect_target() -> void:
+	if is_instance_valid(_target_combat_target):
+		if _target_combat_target.died.is_connected(_on_target_died):
+			_target_combat_target.died.disconnect(_on_target_died)
+	_target_combat_target = null
+
+func _on_target_died() -> void:
+	clear_target()
+
 ## Selecciona un objetivo sin iniciar aproximación ni auto-ataque inmediato.
 func select_target(new_target: Node3D) -> void:
-	if new_target == null or new_target == _parent_body:
+	var p := _get_parent_body()
+	if new_target == null or new_target == p or not is_target_alive(new_target):
 		clear_target()
 		return
 
 	if current_target == new_target and state == State.IDLE:
 		return
 
-	current_target = new_target
+	_connect_target(new_target)
 	state = State.IDLE
 	target_acquired.emit(current_target)
 
 ## Inicia aproximación y auto-ataque hacia el objetivo indicado o actual.
 func attack_target(new_target: Node3D = null) -> void:
+	var p := _get_parent_body()
 	if new_target != null:
-		if new_target == _parent_body:
+		if new_target == p or not is_target_alive(new_target):
 			clear_target()
 			return
-		current_target = new_target
+		_connect_target(new_target)
 
-	if not is_instance_valid(current_target):
+	if not is_instance_valid(current_target) or not is_target_alive(current_target):
 		clear_target()
 		return
 
@@ -77,27 +163,37 @@ func set_target(new_target: Node3D) -> void:
 	attack_target(new_target)
 
 func clear_target() -> void:
-	if current_target != null:
-		current_target = null
-		state = State.IDLE
-		_pending_impacts.clear()
+	_disconnect_target()
+	var had_target := (current_target != null or state != State.IDLE)
+	current_target = null
+	state = State.IDLE
+	_pending_impacts.clear()
+
+	var p := _get_parent_body()
+	if p:
+		var visuals := p.get_node_or_null("Visuals") as PlayerVisuals
+		if visuals and visuals.has_method("stop_attack_and_idle"):
+			visuals.stop_attack_and_idle()
+
+	if had_target:
 		target_lost.emit()
 
 func is_active() -> bool:
-	return state != State.IDLE and is_instance_valid(current_target)
+	return state != State.IDLE and is_instance_valid(current_target) and is_target_alive(current_target)
 
 func is_approaching() -> bool:
-	return state == State.APPROACHING and is_instance_valid(current_target)
+	return state == State.APPROACHING and is_instance_valid(current_target) and is_target_alive(current_target)
 
 func is_attacking() -> bool:
-	return state == State.ATTACKING and is_instance_valid(current_target)
+	return state == State.ATTACKING and is_instance_valid(current_target) and is_target_alive(current_target)
 
 ## Retorna el vector de dirección horizontal hacia el objetivo si está en aproximación.
 func get_approach_direction() -> Vector3:
-	if not is_approaching() or _parent_body == null:
+	var p := _get_parent_body()
+	if not is_approaching() or p == null:
 		return Vector3.ZERO
 
-	var diff := current_target.global_position - _parent_body.global_position
+	var diff := current_target.global_position - p.global_position
 	diff.y = 0.0
 	return diff.normalized()
 
@@ -111,25 +207,30 @@ func update_combat(delta: float, visuals: PlayerVisuals) -> void:
 			var info: Dictionary = _pending_impacts[i]
 			_pending_impacts.remove_at(i)
 			var tgt: Node3D = info.get("target")
-			if is_instance_valid(tgt):
+			if is_instance_valid(tgt) and is_target_alive(tgt):
 				var hit_idx: int = int(info.get("hit_index", 0))
 				var allow_td: bool = bool(info.get("allow_true_damage", true))
 				var dmg_scale: float = float(info.get("damage_scale", 1.0))
 				_apply_impact(tgt, hit_idx, allow_td, dmg_scale)
 
-	if not is_instance_valid(current_target):
+	# Si el objetivo murió o dejó de ser válido, detener combate inmediatamente
+	if not is_instance_valid(current_target) or not is_target_alive(current_target):
 		clear_target()
+		if visuals and visuals.has_method("stop_attack_and_idle"):
+			visuals.stop_attack_and_idle()
 		return
 
-	if _parent_body == null:
+	var p := _get_parent_body()
+	if p == null:
 		return
 
 	var dist_horiz := Vector2(
-		current_target.global_position.x - _parent_body.global_position.x,
-		current_target.global_position.z - _parent_body.global_position.z
+		current_target.global_position.x - p.global_position.x,
+		current_target.global_position.z - p.global_position.z
 	).length()
 
-	var attack_range := combat_config.attack_range if combat_config else 1.8
+	# Rango dinámico ajustado al tamaño físico del enemigo
+	var attack_range := get_effective_attack_range(current_target)
 
 	match state:
 		State.APPROACHING:
@@ -252,6 +353,11 @@ func rpc_spawn_ghost_slash(speed_scale: float = 1.0, hit_index: int = 1) -> void
 
 
 func _apply_impact(target: Node3D, hit_index: int = 0, allow_true_damage: bool = true, damage_scale: float = 1.0) -> void:
+	if not is_instance_valid(target) or not is_target_alive(target):
+		if target == current_target:
+			clear_target()
+		return
+
 	var offset_y := float(GameConfig.get_combat_value("combat", "impact_height_offset", 1.1))
 	var hit_pos := target.global_position + Vector3(0, offset_y, 0)
 
@@ -279,6 +385,11 @@ func _apply_impact(target: Node3D, hit_index: int = 0, allow_true_damage: bool =
 		result.true_damage = maxi(0, int(round(float(result.true_damage) * damage_scale)))
 
 	_broadcast_combat_result(hit_pos, target_path, result)
+
+	# Si el objetivo murió a raíz de este impacto, detener el combate de inmediato
+	if not is_target_alive(target):
+		if target == current_target:
+			clear_target()
 
 	# 7.6 Ondas Expansivas / Cleave en Área (AoE Cleave Waves)
 	# Se ejecuta únicamente con el impacto principal (hit_index == 0) para evitar duplicación exponencial
@@ -341,6 +452,11 @@ func rpc_apply_combat_impact(
 			res.is_miss = is_miss
 			target_comp.take_combat_result(res, hit_pos, _parent_body)
 		attack_executed.emit(target_node, float(total_damage))
+
+		# Si el impacto provocó la muerte del objetivo, detener inmediatamente el combate
+		if not is_target_alive(target_node):
+			if target_node == current_target:
+				clear_target()
 
 ## RPC legacy para compatibilidad con código que invoque daño plano.
 @rpc("any_peer", "call_local", "reliable")

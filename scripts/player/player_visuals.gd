@@ -92,8 +92,12 @@ func spawn_ghost_slash(base_speed_scale: float = 1.0, hit_index: int = 1) -> voi
 		return
 	GhostSlashFXScript.spawn(character_model, global_transform, hit_index, base_speed_scale, _anim_attack)
 
-
-
+## Cancela inmediatamente cualquier animación de ataque y regresa al estado de reposo (Idle).
+func stop_attack_and_idle() -> void:
+	is_attacking_anim = false
+	if anim_player and _anim_idle != "":
+		anim_player.speed_scale = 1.0
+		anim_player.play(_anim_idle, 0.1)
 
 func update_animation(is_moving: bool, current_speed: float = 0.0) -> void:
 	if anim_player == null:

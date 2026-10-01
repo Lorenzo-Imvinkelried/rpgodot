@@ -76,7 +76,7 @@
     "execute_threshold_factor": 0.25,
     "enemy_max_hp_damage_percent": 0.0,
     "physical_damage_bonus": 100.0,
-    "aoe_radius": 220.0,
+    "aoe_radius": 0.0,
     "aoe_damage_percent": 100.0,
     "block_chance": 0.0,
     "block_value_percent": 50.0,
