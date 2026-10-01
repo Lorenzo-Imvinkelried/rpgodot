@@ -1,0 +1,188 @@
+[
+  {
+    "type": "goblin",
+    "name": "Goblin",
+    "stats": {
+      "level": 1,
+      "hp": 80,
+      "mp": 100,
+      "strength": 2,
+      "dexterity": 4,
+      "intelligence": 1,
+      "vitality": 4,
+      "attack": 6,
+      "defense": 5,
+      "speed": 3.8,
+      "atkSpeed": 1.5,
+      "attackDelayFactor": 0.45,
+      "attackRange": 2.0,
+      "leashRadius": 18.0,
+      "rangeViolent": 10.0,
+      "malice": 0.0,
+      "stance": "neutral",
+      "critChance": 5.0,
+      "critDamage": 120.0,
+      "armorPenetration": 0,
+      "xp": 150,
+      "accuracy": 100,
+      "evasion": 2,
+      "armorPenetrationPercent": 0.0,
+      "physicalDamageBonus": 100.0,
+      "lifestealPercent": 0.0,
+      "blockChance": 5.0,
+      "blockValuePercent": 50.0,
+      "hpRegenPercent": 1.0,
+      "mpRegenPercent": 1.0,
+      "stunChance": 0.0,
+      "stunDuration": 0.0,
+      "tenacityPercent": 0.0,
+      "damageReductionPercent": 0.0,
+      "aoeRadius": 0.0,
+      "aoeDamagePercent": 0.0,
+      "scale": [1.0, 1.0, 1.0],
+      "weightKg": 40.0,
+      "groundOffsetY": 0.0
+    },
+    "skills": [
+      {
+        "id": 1,
+        "name": "Puñalada Rápida",
+        "cooldown": 4.0,
+        "manaCost": 15,
+        "damageFlat": 25,
+        "range": 2.2,
+        "castTime": 0.3
+      }
+    ],
+    "equipment_pool": {
+      "MainHand": [
+        { "id": "weapon_dagger_basic", "chance": 40.0 },
+        { "id": "weapon_sword_rusty", "chance": 15.0 }
+      ],
+      "OffHand": [
+        { "id": "shield_wood_small", "chance": 20.0 }
+      ],
+      "Head": [
+        { "id": "armor_leather_cap", "chance": 15.0 }
+      ]
+    }
+  },
+  {
+    "type": "wolf",
+    "name": "Lobo Feroz",
+    "stats": {
+      "level": 2,
+      "hp": 110,
+      "mp": 40,
+      "strength": 5,
+      "dexterity": 8,
+      "intelligence": 1,
+      "vitality": 5,
+      "attack": 12,
+      "defense": 4,
+      "speed": 5.0,
+      "atkSpeed": 1.8,
+      "attackDelayFactor": 0.35,
+      "attackRange": 1.8,
+      "leashRadius": 22.0,
+      "rangeViolent": 12.0,
+      "malice": 0.2,
+      "stance": "violent",
+      "critChance": 10.0,
+      "critDamage": 140.0,
+      "armorPenetration": 0,
+      "xp": 220,
+      "accuracy": 110,
+      "evasion": 5,
+      "armorPenetrationPercent": 0.0,
+      "physicalDamageBonus": 100.0,
+      "lifestealPercent": 5.0,
+      "blockChance": 0.0,
+      "blockValuePercent": 0.0,
+      "hpRegenPercent": 1.0,
+      "mpRegenPercent": 1.0,
+      "stunChance": 0.0,
+      "stunDuration": 0.0,
+      "tenacityPercent": 10.0,
+      "damageReductionPercent": 0.0,
+      "aoeRadius": 0.0,
+      "aoeDamagePercent": 0.0,
+      "scale": [1.0, 1.0, 1.0],
+      "weightKg": 55.0,
+      "groundOffsetY": 0.0
+    },
+    "skills": [
+      {
+        "id": 2,
+        "name": "Mordida Feroz",
+        "cooldown": 5.0,
+        "manaCost": 10,
+        "damageFlat": 35,
+        "range": 2.0,
+        "castTime": 0.2
+      }
+    ],
+    "equipment_pool": {}
+  },
+  {
+    "type": "dragon_boss",
+    "name": "Gran Dragón Rojo",
+    "stats": {
+      "level": 10,
+      "hp": 1500,
+      "mp": 500,
+      "strength": 25,
+      "dexterity": 10,
+      "intelligence": 20,
+      "vitality": 30,
+      "attack": 45,
+      "defense": 30,
+      "speed": 3.4,
+      "atkSpeed": 1.1,
+      "attackDelayFactor": 0.50,
+      "attackRange": 3.8,
+      "leashRadius": 32.0,
+      "rangeViolent": 18.0,
+      "malice": 0.5,
+      "stance": "violent",
+      "critChance": 15.0,
+      "critDamage": 170.0,
+      "armorPenetration": 10,
+      "xp": 2500,
+      "accuracy": 140,
+      "evasion": 3,
+      "armorPenetrationPercent": 15.0,
+      "physicalDamageBonus": 120.0,
+      "lifestealPercent": 0.0,
+      "blockChance": 10.0,
+      "blockValuePercent": 60.0,
+      "hpRegenPercent": 2.0,
+      "mpRegenPercent": 2.0,
+      "stunChance": 10.0,
+      "stunDuration": 1.0,
+      "tenacityPercent": 75.0,
+      "damageReductionPercent": 15.0,
+      "aoeRadius": 6.0,
+      "aoeDamagePercent": 50.0,
+      "scale": [1.4, 1.4, 1.4],
+      "weightKg": 800.0,
+      "groundOffsetY": 0.0
+    },
+    "skills": [
+      {
+        "id": 3,
+        "name": "Aliento de Fuego",
+        "cooldown": 6.0,
+        "manaCost": 40,
+        "damageFlat": 80,
+        "range": 8.0,
+        "castTime": 0.8
+      }
+    ],
+    "equipment_pool": {
+      "MainHand": [
+        { "id": "weapon_dragon_blade", "chance": 50.0 }
+      ]
+    }
+  }
+]

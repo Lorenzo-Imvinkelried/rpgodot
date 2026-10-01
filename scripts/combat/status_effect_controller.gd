@@ -179,3 +179,7 @@ func clear_all_effects() -> void:
 		_slow_move_percent = 0.0
 		_slow_attack_percent = 0.0
 		slow_removed.emit()
+
+## Alias para limpieza total de estados alterados
+func cleanse_all() -> void:
+	clear_all_effects()

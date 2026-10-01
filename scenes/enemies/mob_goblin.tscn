@@ -1,0 +1,79 @@
+[gd_scene load_steps=12 format=3 uid="uid://mob_goblin_8471"]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/mob.gd" id="1_mob"]
+[ext_resource type="Script" path="res://scripts/combat/combat_target.gd" id="2_target"]
+[ext_resource type="Script" path="res://scripts/combat/status_effect_controller.gd" id="3_status"]
+[ext_resource type="PackedScene" path="res://scenes/combat/health_bar_3d.tscn" id="4_hbar"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_goblin"]
+radius = 0.4
+height = 1.5
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_skin"]
+resource_local_to_scene = true
+albedo_color = Color(0.28, 0.58, 0.25, 1)
+roughness = 0.7
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+material = SubResource("StandardMaterial3D_skin")
+radius = 0.38
+height = 1.3
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eyes"]
+resource_local_to_scene = true
+shading_mode = 0
+albedo_color = Color(1, 0.85, 0.15, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_eye"]
+material = SubResource("StandardMaterial3D_eyes")
+radius = 0.08
+height = 0.16
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_blade"]
+resource_local_to_scene = true
+albedo_color = Color(0.7, 0.75, 0.8, 1)
+metallic = 0.8
+roughness = 0.3
+
+[sub_resource type="BoxMesh" id="BoxMesh_dagger"]
+material = SubResource("StandardMaterial3D_blade")
+size = Vector3(0.1, 0.5, 0.06)
+
+[node name="MobGoblin" type="CharacterBody3D" groups=["enemies", "targetable"]]
+collision_layer = 1
+collision_mask = 1
+script = ExtResource("1_mob")
+blueprint_type = "goblin"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+shape = SubResource("CapsuleShape3D_goblin")
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="BodyMesh" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="LeftEye" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15, 1.05, -0.32)
+mesh = SubResource("SphereMesh_eye")
+
+[node name="RightEye" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 1.05, -0.32)
+mesh = SubResource("SphereMesh_eye")
+
+[node name="Dagger" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 0, 0, 1, 0.42, 0.65, -0.22)
+mesh = SubResource("BoxMesh_dagger")
+
+[node name="HealthBar3D" parent="." instance=ExtResource("4_hbar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.85, 0)
+
+[node name="CombatTarget" type="Node" parent="."]
+script = ExtResource("2_target")
+target_name = "Goblin"
+max_health = 80.0
+
+[node name="StatusEffectController" type="Node" parent="."]
+script = ExtResource("3_status")

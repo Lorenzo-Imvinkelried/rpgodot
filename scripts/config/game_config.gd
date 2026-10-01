@@ -33,6 +33,29 @@ static func load_json(file_path: String) -> Dictionary:
 	_cached_configs[file_path] = parsed
 	return parsed
 
+## Carga un archivo JSON y retorna su contenido parseado (Dictionary o Array)
+static func load_json_data(file_path: String) -> Variant:
+	if _cached_configs.has(file_path):
+		return _cached_configs[file_path]
+
+	if not FileAccess.file_exists(file_path):
+		push_warning("GameConfig: Archivo '%s' no encontrado." % file_path)
+		return null
+
+	var file := FileAccess.open(file_path, FileAccess.READ)
+	if file == null:
+		push_error("GameConfig: Error al abrir archivo '%s'." % file_path)
+		return null
+
+	var text := file.get_as_text()
+	var parsed = JSON.parse_string(text)
+	if parsed == null:
+		push_error("GameConfig: Error al parsear JSON en '%s'." % file_path)
+		return null
+
+	_cached_configs[file_path] = parsed
+	return parsed
+
 ## Fuerza la recarga de todas las configuraciones JSON en memoria.
 static func reload() -> void:
 	_cached_configs.clear()
