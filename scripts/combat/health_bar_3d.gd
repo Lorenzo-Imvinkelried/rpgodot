@@ -13,6 +13,7 @@ const COLOR_HEALTH_LOW := Color(0.92, 0.26, 0.26, 1.0)
 @export var combat_target: CombatTarget = null
 @export var auto_hide_when_full: bool = false
 @export var use_dynamic_health_color: bool = true
+@export var max_visible_distance: float = 60.0
 
 @onready var sub_viewport: SubViewport = $SubViewport
 @onready var sprite_3d: Sprite3D = $Sprite3D
@@ -20,6 +21,8 @@ const COLOR_HEALTH_LOW := Color(0.92, 0.26, 0.26, 1.0)
 @onready var health_bar: ProgressBar = $SubViewport/UIContainer/BarContainer/HealthBar
 @onready var value_label: Label = $SubViewport/UIContainer/BarContainer/ValueLabel
 
+var _ui_container: Control = null
+var _is_floating_2d: bool = false
 var _current_health: float = 100.0
 var _max_health: float = 100.0
 var _hp_tween: Tween = null
@@ -28,14 +31,19 @@ var _base_entity_name: String = ""
 var _entity_name_color: Color = Color.WHITE
 var _status_controller: StatusEffectController = null
 
+func _exit_tree() -> void:
+	if _ui_container != null and is_instance_valid(_ui_container):
+		_ui_container.queue_free()
+		_ui_container = null
+
 func _ready() -> void:
 	height_offset = float(GameConfig.get_ui_value("health_bar", "height_offset", height_offset))
 	auto_hide_when_full = bool(GameConfig.get_ui_value("health_bar", "auto_hide_when_full", auto_hide_when_full))
 	use_dynamic_health_color = bool(GameConfig.get_ui_value("health_bar", "use_dynamic_health_color", use_dynamic_health_color))
 
 	position.y = height_offset
-	if sprite_3d and sub_viewport:
-		sprite_3d.texture = sub_viewport.get_texture()
+
+	_setup_floating_ui()
 
 	# Clonar el StyleBox del relleno para que cada barra tenga su propia instancia única
 	# y no comparta el color con otros personajes o muñecos
@@ -157,13 +165,81 @@ func set_health(current: float, max_val: float, animate: bool = true) -> void:
 
 	_update_auto_hide()
 
+func _setup_floating_ui() -> void:
+	_ui_container = get_node_or_null("SubViewport/UIContainer") as Control
+	if _ui_container == null:
+		return
+
+	# Asegurar que ningún control intercepte clics de ratón en el mundo 3D
+	_set_mouse_filter_recursive(_ui_container)
+
+	# Obtener o instanciar la capa FloatingCombatLayer en Layer 2
+	var layer := FloatingCombatLayer.get_or_create(get_tree())
+	if layer != null:
+		layer.add_floating_element(_ui_container)
+		_is_floating_2d = true
+		if sprite_3d:
+			sprite_3d.visible = false
+		if sub_viewport:
+			sub_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	else:
+		# Fallback para pruebas sin SceneTree o entornos mínimos
+		if sprite_3d and sub_viewport:
+			sprite_3d.texture = sub_viewport.get_texture()
+
+func _process(_delta: float) -> void:
+	if not _is_floating_2d or _ui_container == null or not is_instance_valid(_ui_container):
+		return
+
+	if not is_visible_in_tree():
+		_ui_container.visible = false
+		return
+
+	var vp := get_viewport()
+	if vp == null:
+		_ui_container.visible = false
+		return
+
+	var cam := vp.get_camera_3d()
+	if cam == null or not is_instance_valid(cam):
+		_ui_container.visible = false
+		return
+
+	var world_pos := global_position
+	if cam.is_position_behind(world_pos):
+		_ui_container.visible = false
+		return
+
+	var dist := cam.global_position.distance_to(world_pos)
+	if dist > max_visible_distance:
+		_ui_container.visible = false
+		return
+
+	var screen_pos := cam.unproject_position(world_pos)
+	_ui_container.visible = true
+	_ui_container.position = screen_pos - (_ui_container.size * 0.5)
+
+	# Escala sutil con la distancia para mantener máxima legibilidad tipo MMORPG
+	var scale_factor := clampf(1.0 - (dist - 8.0) * 0.012, 0.75, 1.05)
+	_ui_container.scale = Vector2(scale_factor, scale_factor)
+	_ui_container.pivot_offset = _ui_container.size * 0.5
+
 func _update_auto_hide() -> void:
-	if not auto_hide_when_full or sprite_3d == null:
+	if not auto_hide_when_full:
 		return
 	var is_full := _current_health >= _max_health
 	var target_alpha := 0.0 if is_full else 1.0
 	var tween := create_tween()
-	tween.tween_property(sprite_3d, "modulate:a", target_alpha, 0.2)
+	if _ui_container != null and is_instance_valid(_ui_container):
+		tween.tween_property(_ui_container, "modulate:a", target_alpha, 0.2)
+	elif sprite_3d != null:
+		tween.tween_property(sprite_3d, "modulate:a", target_alpha, 0.2)
+
+static func _set_mouse_filter_recursive(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_set_mouse_filter_recursive(child)
 
 func _on_health_changed(current: float, max_val: float) -> void:
 	set_health(current, max_val, true)
