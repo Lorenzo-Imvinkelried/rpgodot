@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://main_scene_3918"]
+[gd_scene load_steps=12 format=3 uid="uid://main_scene_3918"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/network/network_manager.gd" id="2_network"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/combat/training_dummy.tscn" id="5_dummy"]
 [ext_resource type="Script" path="res://scripts/world/spawning/mob_spawner.gd" id="6_spawner"]
 [ext_resource type="PackedScene" path="res://scenes/rendering/retro_post_process.tscn" id="7_retro"]
+[ext_resource type="PackedScene" path="res://scenes/world/world_map.tscn" id="8_map"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 sky_top_color = Color(0.22, 0.42, 0.68, 1)
@@ -29,55 +30,6 @@ fog_light_color = Color(0.55, 0.65, 0.75, 1)
 fog_density = 0.003
 fog_sky_affect = 0.5
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
-size = Vector3(200, 1, 200)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
-albedo_color = Color(0.16, 0.18, 0.22, 1)
-roughness = 0.88
-uv1_scale = Vector3(50, 50, 1)
-
-[sub_resource type="BoxMesh" id="BoxMesh_floor"]
-material = SubResource("StandardMaterial3D_floor")
-size = Vector3(200, 1, 200)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plaza"]
-albedo_color = Color(0.26, 0.28, 0.34, 1)
-roughness = 0.75
-
-[sub_resource type="BoxMesh" id="BoxMesh_plaza"]
-material = SubResource("StandardMaterial3D_plaza")
-size = Vector3(28, 0.08, 28)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_h"]
-size = Vector3(200, 6, 2)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_v"]
-size = Vector3(2, 6, 200)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wall"]
-albedo_color = Color(0.14, 0.15, 0.18, 1)
-roughness = 0.9
-
-[sub_resource type="BoxMesh" id="BoxMesh_wall_h"]
-material = SubResource("StandardMaterial3D_wall")
-size = Vector3(200, 6, 2)
-
-[sub_resource type="BoxMesh" id="BoxMesh_wall_v"]
-material = SubResource("StandardMaterial3D_wall")
-size = Vector3(2, 6, 200)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_pillar"]
-size = Vector3(1.8, 3.5, 1.8)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pillar"]
-albedo_color = Color(0.3, 0.32, 0.38, 1)
-roughness = 0.8
-
-[sub_resource type="BoxMesh" id="BoxMesh_pillar"]
-material = SubResource("StandardMaterial3D_pillar")
-size = Vector3(1.8, 3.5, 1.8)
-
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
 
@@ -93,112 +45,7 @@ light_color = Color(1, 0.96, 0.9, 1)
 light_energy = 1.15
 shadow_enabled = true
 
-[node name="Environment" type="Node3D" parent="."]
-
-[node name="Floor" type="StaticBody3D" parent="Environment"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Floor"]
-shape = SubResource("BoxShape3D_floor")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Floor"]
-mesh = SubResource("BoxMesh_floor")
-
-[node name="PlazaCenter" type="MeshInstance3D" parent="Environment"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
-mesh = SubResource("BoxMesh_plaza")
-
-[node name="WallNorth" type="StaticBody3D" parent="Environment"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 100)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallNorth"]
-shape = SubResource("BoxShape3D_wall_h")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/WallNorth"]
-mesh = SubResource("BoxMesh_wall_h")
-
-[node name="WallSouth" type="StaticBody3D" parent="Environment"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -100)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallSouth"]
-shape = SubResource("BoxShape3D_wall_h")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/WallSouth"]
-mesh = SubResource("BoxMesh_wall_h")
-
-[node name="WallEast" type="StaticBody3D" parent="Environment"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 2.5, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallEast"]
-shape = SubResource("BoxShape3D_wall_v")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/WallEast"]
-mesh = SubResource("BoxMesh_wall_v")
-
-[node name="WallWest" type="StaticBody3D" parent="Environment"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 2.5, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/WallWest"]
-shape = SubResource("BoxShape3D_wall_v")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/WallWest"]
-mesh = SubResource("BoxMesh_wall_v")
-
-[node name="Pillars" type="Node3D" parent="Environment"]
-
-[node name="PillarPlaza1" type="StaticBody3D" parent="Environment/Pillars"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 1.75, -12)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Pillars/PillarPlaza1"]
-shape = SubResource("BoxShape3D_pillar")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Pillars/PillarPlaza1"]
-mesh = SubResource("BoxMesh_pillar")
-
-[node name="PillarPlaza2" type="StaticBody3D" parent="Environment/Pillars"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.75, -12)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Pillars/PillarPlaza2"]
-shape = SubResource("BoxShape3D_pillar")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Pillars/PillarPlaza2"]
-mesh = SubResource("BoxMesh_pillar")
-
-[node name="PillarPlaza3" type="StaticBody3D" parent="Environment/Pillars"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 1.75, 12)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Pillars/PillarPlaza3"]
-shape = SubResource("BoxShape3D_pillar")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Pillars/PillarPlaza3"]
-mesh = SubResource("BoxMesh_pillar")
-
-[node name="PillarPlaza4" type="StaticBody3D" parent="Environment/Pillars"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.75, 12)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Pillars/PillarPlaza4"]
-shape = SubResource("BoxShape3D_pillar")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Pillars/PillarPlaza4"]
-mesh = SubResource("BoxMesh_pillar")
-
-[node name="PillarBossGateL" type="StaticBody3D" parent="Environment/Pillars"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2.5, 58)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Pillars/PillarBossGateL"]
-shape = SubResource("BoxShape3D_pillar")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Pillars/PillarBossGateL"]
-mesh = SubResource("BoxMesh_pillar")
-
-[node name="PillarBossGateR" type="StaticBody3D" parent="Environment/Pillars"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2.5, 58)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Environment/Pillars/PillarBossGateR"]
-shape = SubResource("BoxShape3D_pillar")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Environment/Pillars/PillarBossGateR"]
-mesh = SubResource("BoxMesh_pillar")
+[node name="WorldMap" parent="." instance=ExtResource("8_map")]
 
 [node name="TrainingDummy1" parent="." instance=ExtResource("5_dummy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 4)

@@ -1,0 +1,35 @@
+[gd_scene load_steps=6 format=3 uid="uid://world_prop_stall_01"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_stall"]
+size = Vector3(3.2, 2.6, 2.2)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Wood"]
+albedo_color = Color(0.42, 0.28, 0.16, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="BoxMesh_table"]
+material = SubResource("Mat_Wood")
+size = Vector3(2.8, 0.9, 1.6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Canopy"]
+albedo_color = Color(0.85, 0.25, 0.22, 1)
+roughness = 0.8
+
+[sub_resource type="PrismMesh" id="PrismMesh_roof"]
+material = SubResource("Mat_Canopy")
+left_to_right = 0.5
+size = Vector3(3.2, 0.8, 2.2)
+
+[node name="MarketStall" type="StaticBody3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("BoxShape3D_stall")
+
+[node name="Table" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("BoxMesh_table")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+mesh = SubResource("PrismMesh_roof")

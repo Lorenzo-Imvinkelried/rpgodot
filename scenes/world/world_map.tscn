@@ -1,0 +1,294 @@
+[gd_scene load_steps=22 format=3 uid="uid://world_map_mmorpg_01"]
+
+[ext_resource type="PackedScene" path="res://scenes/world/props/tree_pine.tscn" id="1_pine"]
+[ext_resource type="PackedScene" path="res://scenes/world/props/tree_oak.tscn" id="2_oak"]
+[ext_resource type="PackedScene" path="res://scenes/world/props/rock_boulder.tscn" id="3_rock"]
+[ext_resource type="PackedScene" path="res://scenes/world/props/fence_wood.tscn" id="4_fence"]
+[ext_resource type="PackedScene" path="res://scenes/world/props/lantern_post.tscn" id="5_lantern"]
+[ext_resource type="PackedScene" path="res://scenes/world/props/market_stall.tscn" id="6_stall"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(300, 1, 300)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Grass"]
+albedo_color = Color(0.22, 0.42, 0.24, 1)
+roughness = 0.92
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+material = SubResource("Mat_Grass")
+size = Vector3(300, 1, 300)
+
+[sub_resource type="StandardMaterial3D" id="Mat_PlazaCobble"]
+albedo_color = Color(0.32, 0.34, 0.40, 1)
+roughness = 0.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_plaza"]
+material = SubResource("Mat_PlazaCobble")
+size = Vector3(34, 0.08, 34)
+
+[sub_resource type="StandardMaterial3D" id="Mat_RoadDirt"]
+albedo_color = Color(0.46, 0.38, 0.28, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="BoxMesh_road_ns"]
+material = SubResource("Mat_RoadDirt")
+size = Vector3(6, 0.06, 260)
+
+[sub_resource type="BoxMesh" id="BoxMesh_road_ew"]
+material = SubResource("Mat_RoadDirt")
+size = Vector3(260, 0.06, 6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Water"]
+albedo_color = Color(0.2, 0.55, 0.85, 0.9)
+roughness = 0.15
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_fountain"]
+material = SubResource("Mat_Water")
+top_radius = 2.4
+bottom_radius = 2.4
+height = 0.35
+radial_segments = 12
+
+[sub_resource type="StandardMaterial3D" id="Mat_StoneMonument"]
+albedo_color = Color(0.5, 0.52, 0.56, 1)
+roughness = 0.75
+
+[sub_resource type="PrismMesh" id="PrismMesh_obelisk"]
+material = SubResource("Mat_StoneMonument")
+size = Vector3(1.2, 5.0, 1.2)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Volcano"]
+albedo_color = Color(0.14, 0.13, 0.16, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="BoxMesh_volcano"]
+material = SubResource("Mat_Volcano")
+size = Vector3(80, 0.1, 70)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_boundary_h"]
+size = Vector3(300, 12, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_boundary_v"]
+size = Vector3(4, 12, 300)
+
+[sub_resource type="StandardMaterial3D" id="Mat_BoundaryCliff"]
+albedo_color = Color(0.25, 0.26, 0.30, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_boundary_h"]
+material = SubResource("Mat_BoundaryCliff")
+size = Vector3(300, 12, 4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_boundary_v"]
+material = SubResource("Mat_BoundaryCliff")
+size = Vector3(4, 12, 300)
+
+[node name="WorldMap" type="Node3D"]
+
+[node name="Floor" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("BoxShape3D_ground")
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("BoxMesh_ground")
+
+[node name="Roads" type="Node3D" parent="."]
+
+[node name="RoadNorthSouth" type="MeshInstance3D" parent="Roads"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("BoxMesh_road_ns")
+
+[node name="RoadEastWest" type="MeshInstance3D" parent="Roads"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("BoxMesh_road_ew")
+
+[node name="TownPlaza" type="Node3D" parent="."]
+
+[node name="PlazaCobblestone" type="MeshInstance3D" parent="TownPlaza"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+mesh = SubResource("BoxMesh_plaza")
+
+[node name="Fountain" type="MeshInstance3D" parent="TownPlaza"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+mesh = SubResource("CylinderMesh_fountain")
+
+[node name="Obelisk" type="MeshInstance3D" parent="TownPlaza"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
+mesh = SubResource("PrismMesh_obelisk")
+
+[node name="LanternNW" parent="TownPlaza" instance=ExtResource("5_lantern")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, 14)
+
+[node name="LanternNE" parent="TownPlaza" instance=ExtResource("5_lantern")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 14)
+
+[node name="LanternSW" parent="TownPlaza" instance=ExtResource("5_lantern")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, -14)
+
+[node name="LanternSE" parent="TownPlaza" instance=ExtResource("5_lantern")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -14)
+
+[node name="StallNW" parent="TownPlaza" instance=ExtResource("6_stall")]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -10, 0, 10)
+
+[node name="StallNE" parent="TownPlaza" instance=ExtResource("6_stall")]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 10, 0, 10)
+
+[node name="StallSW" parent="TownPlaza" instance=ExtResource("6_stall")]
+transform = Transform3D(0.866025, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866025, -10, 0, -10)
+
+[node name="StallSE" parent="TownPlaza" instance=ExtResource("6_stall")]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, 10, 0, -10)
+
+[node name="TownFences" type="Node3D" parent="TownPlaza"]
+
+[node name="FenceN1" parent="TownPlaza/TownFences" instance=ExtResource("4_fence")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 16)
+
+[node name="FenceN2" parent="TownPlaza/TownFences" instance=ExtResource("4_fence")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 16)
+
+[node name="FenceS1" parent="TownPlaza/TownFences" instance=ExtResource("4_fence")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -16)
+
+[node name="FenceS2" parent="TownPlaza/TownFences" instance=ExtResource("4_fence")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -16)
+
+[node name="FenceW1" parent="TownPlaza/TownFences" instance=ExtResource("4_fence")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -16, 0, -8)
+
+[node name="FenceW2" parent="TownPlaza/TownFences" instance=ExtResource("4_fence")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -16, 0, 8)
+
+[node name="FenceE1" parent="TownPlaza/TownFences" instance=ExtResource("4_fence")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 16, 0, -8)
+
+[node name="FenceE2" parent="TownPlaza/TownFences" instance=ExtResource("4_fence")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 16, 0, 8)
+
+[node name="BiomeWestGoblinCamp" type="Node3D" parent="."]
+
+[node name="OakW1" parent="BiomeWestGoblinCamp" instance=ExtResource("2_oak")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 0, 20)
+
+[node name="OakW2" parent="BiomeWestGoblinCamp" instance=ExtResource("2_oak")]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, -45, 0, 26)
+
+[node name="OakW3" parent="BiomeWestGoblinCamp" instance=ExtResource("2_oak")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, -58, 0, 18)
+
+[node name="OakW4" parent="BiomeWestGoblinCamp" instance=ExtResource("2_oak")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -38, 0, -18)
+
+[node name="OakW5" parent="BiomeWestGoblinCamp" instance=ExtResource("2_oak")]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, -68, 0, -12)
+
+[node name="RockW1" parent="BiomeWestGoblinCamp" instance=ExtResource("3_rock")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 0, -4)
+
+[node name="RockW2" parent="BiomeWestGoblinCamp" instance=ExtResource("3_rock")]
+transform = Transform3D(1.3, 0, 0, 0, 1.3, 0, 0, 0, 1.3, -65, 0, 12)
+
+[node name="BiomeEastWolfForest" type="Node3D" parent="."]
+
+[node name="PineE1" parent="BiomeEastWolfForest" instance=ExtResource("1_pine")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 0, 22)
+
+[node name="PineE2" parent="BiomeEastWolfForest" instance=ExtResource("1_pine")]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, 40, 0, 28)
+
+[node name="PineE3" parent="BiomeEastWolfForest" instance=ExtResource("1_pine")]
+transform = Transform3D(0.95, 0, 0, 0, 0.95, 0, 0, 0, 0.95, 52, 0, 18)
+
+[node name="PineE4" parent="BiomeEastWolfForest" instance=ExtResource("1_pine")]
+transform = Transform3D(1.3, 0, 0, 0, 1.3, 0, 0, 0, 1.3, 32, 0, -16)
+
+[node name="PineE5" parent="BiomeEastWolfForest" instance=ExtResource("1_pine")]
+transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, 55, 0, -22)
+
+[node name="PineE6" parent="BiomeEastWolfForest" instance=ExtResource("1_pine")]
+transform = Transform3D(1.25, 0, 0, 0, 1.25, 0, 0, 0, 1.25, 72, 0, 6)
+
+[node name="RockE1" parent="BiomeEastWolfForest" instance=ExtResource("3_rock")]
+transform = Transform3D(1.4, 0, 0, 0, 1.4, 0, 0, 0, 1.4, 42, 0, 0)
+
+[node name="RockE2" parent="BiomeEastWolfForest" instance=ExtResource("3_rock")]
+transform = Transform3D(1.8, 0, 0, 0, 1.8, 0, 0, 0, 1.8, 60, 0, -14)
+
+[node name="RockE3" parent="BiomeEastWolfForest" instance=ExtResource("3_rock")]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 70, 0, 14)
+
+[node name="BiomeNorthDragonSanctuary" type="Node3D" parent="."]
+
+[node name="VolcanoFloor" type="MeshInstance3D" parent="BiomeNorthDragonSanctuary"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 80)
+mesh = SubResource("BoxMesh_volcano")
+
+[node name="RockBossL1" parent="BiomeNorthDragonSanctuary" instance=ExtResource("3_rock")]
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, -24, 0, 75)
+
+[node name="RockBossL2" parent="BiomeNorthDragonSanctuary" instance=ExtResource("3_rock")]
+transform = Transform3D(2.8, 0, 0, 0, 2.8, 0, 0, 0, 2.8, -18, 0, 92)
+
+[node name="RockBossR1" parent="BiomeNorthDragonSanctuary" instance=ExtResource("3_rock")]
+transform = Transform3D(2.5, 0, 0, 0, 2.5, 0, 0, 0, 2.5, 24, 0, 75)
+
+[node name="RockBossR2" parent="BiomeNorthDragonSanctuary" instance=ExtResource("3_rock")]
+transform = Transform3D(2.8, 0, 0, 0, 2.8, 0, 0, 0, 2.8, 18, 0, 92)
+
+[node name="RockBossBack" parent="BiomeNorthDragonSanctuary" instance=ExtResource("3_rock")]
+transform = Transform3D(3.2, 0, 0, 0, 3.2, 0, 0, 0, 3.2, 0, 0, 105)
+
+[node name="BiomeSouthRuins" type="Node3D" parent="."]
+
+[node name="PineS1" parent="BiomeSouthRuins" instance=ExtResource("1_pine")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, -45)
+
+[node name="PineS2" parent="BiomeSouthRuins" instance=ExtResource("1_pine")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, -45)
+
+[node name="RockS1" parent="BiomeSouthRuins" instance=ExtResource("3_rock")]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, -18, 0, -68)
+
+[node name="RockS2" parent="BiomeSouthRuins" instance=ExtResource("3_rock")]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 18, 0, -68)
+
+[node name="Boundaries" type="Node3D" parent="."]
+
+[node name="WallNorth" type="StaticBody3D" parent="Boundaries"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 150)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Boundaries/WallNorth"]
+shape = SubResource("BoxShape3D_boundary_h")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Boundaries/WallNorth"]
+mesh = SubResource("BoxMesh_boundary_h")
+
+[node name="WallSouth" type="StaticBody3D" parent="Boundaries"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -150)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Boundaries/WallSouth"]
+shape = SubResource("BoxShape3D_boundary_h")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Boundaries/WallSouth"]
+mesh = SubResource("BoxMesh_boundary_h")
+
+[node name="WallEast" type="StaticBody3D" parent="Boundaries"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 6, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Boundaries/WallEast"]
+shape = SubResource("BoxShape3D_boundary_v")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Boundaries/WallEast"]
+mesh = SubResource("BoxMesh_boundary_v")
+
+[node name="WallWest" type="StaticBody3D" parent="Boundaries"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -150, 6, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Boundaries/WallWest"]
+shape = SubResource("BoxShape3D_boundary_v")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Boundaries/WallWest"]
+mesh = SubResource("BoxMesh_boundary_v")
