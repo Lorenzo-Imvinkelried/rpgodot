@@ -67,10 +67,14 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	if visuals and visuals.has_method("play_attack"):
 		visuals.play_attack(skill_speed_scale)
 
-	# 5. Entrada en estado de combate del lanzador
+	# 5. Entrada en estado de combate del lanzador y sincronización con CombatController
 	var caster_ct := caster.get_node_or_null("CombatTarget") as CombatTarget
 	if caster_ct:
 		caster_ct.enter_combat(target)
+
+	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
+	if combat_ctrl and combat_ctrl.has_method("reset_attack_timer"):
+		combat_ctrl.reset_attack_timer()
 
 	# 6. Sincronización del impacto con la caída de la espada
 	var base_delay: float = float(GameConfig.get_combat_value("combat", "impact_delay", BASE_IMPACT_DELAY))

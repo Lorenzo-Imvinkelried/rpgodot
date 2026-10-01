@@ -190,6 +190,24 @@ func _run_tests() -> void:
 
 	print("[OK] Prueba 4: Entrando y saliendo de combate con temporizador y señales verificado.")
 
+	# --------------------------------------------------------------------------
+	# PRUEBA 5: Clicks derechos repetidos sobre el objetivo en combate activo
+	# --------------------------------------------------------------------------
+	# Situar dummy a distancia de ataque del jugador
+	dummy.position = Vector3(1.5, 0.0, 0.0)
+	combat_ctrl.attack_target(dummy)
+	assert(combat_ctrl.state == CombatController.State.ATTACKING, "Estando en rango debe entrar directamente a State.ATTACKING")
+	assert(combat_ctrl.is_approaching() == false, "No debe estar en aproximación si ya está en rango")
+
+	# Simular clicks derechos repetidos sobre el objetivo durante combate activo
+	for _i in range(5):
+		combat_ctrl.attack_target(dummy)
+		assert(combat_ctrl.state == CombatController.State.ATTACKING, "Clicks repetidos NO deben cambiar a State.APPROACHING")
+		assert(combat_ctrl.is_approaching() == false, "Clicks repetidos no deben forzar is_approaching a true")
+		assert(combat_ctrl.is_attacking() == true, "Debe mantenerse firmemente en State.ATTACKING")
+
+	print("[OK] Prueba 5: Clicks derechos repetidos en combate ignoran aproximaciones redundantes y no reinician animaciones.")
+
 	# Limpieza
 	attacker_a.queue_free()
 	attacker_b.queue_free()
@@ -198,5 +216,5 @@ func _run_tests() -> void:
 	player.queue_free()
 	dummy.queue_free()
 
-	print("\n--- TODAS LAS PRUEBAS DE SKILLS MODULARES, AGGRO Y COMBATE PASARON EXITOSAMENTE (4/4) ---\n")
+	print("\n--- TODAS LAS PRUEBAS DE SKILLS MODULARES, AGGRO Y COMBATE PASARON EXITOSAMENTE (5/5) ---\n")
 	quit(0)

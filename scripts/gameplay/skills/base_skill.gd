@@ -82,10 +82,14 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 		var final_speed_scale: float = maxf(1.5, base_anim_scale * anim_speed_multiplier)
 		visuals.play_attack(final_speed_scale)
 
-	# Registro de estado de combate en el lanzador
+	# Registro de estado de combate en el lanzador y sincronización de autoataque
 	var caster_ct := caster.get_node_or_null("CombatTarget") as CombatTarget
 	if caster_ct:
 		caster_ct.enter_combat(target)
+
+	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
+	if combat_ctrl and combat_ctrl.has_method("reset_attack_timer"):
+		combat_ctrl.reset_attack_timer()
 
 	# Ejecución de daño
 	if is_aoe:

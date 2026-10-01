@@ -86,6 +86,10 @@ func play_attack(custom_speed_scale: float = 1.0) -> void:
 	var blend_time: float = clampf(0.08 / custom_speed_scale, 0.01, ANIM_BLEND_TIME)
 	anim_player.play(_anim_attack, blend_time)
 
+## Retorna si se encuentra reproduciendo activamente una animación de ataque
+func is_playing_attack() -> bool:
+	return is_attacking_anim and anim_player != null and anim_player.is_playing() and anim_player.current_animation == _anim_attack
+
 ## Instancia un clon fantasma translúcido que ejecuta un tajo rápido adicional (Multi-Strike)
 func spawn_ghost_slash(base_speed_scale: float = 1.0, hit_index: int = 1) -> void:
 	if character_model == null:

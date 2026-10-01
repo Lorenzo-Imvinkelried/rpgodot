@@ -149,11 +149,51 @@ func attack_target(new_target: Node3D = null) -> void:
 		if new_target == p or not is_target_alive(new_target):
 			clear_target()
 			return
+
+	var target_to_attack: Node3D = new_target if new_target != null else current_target
+	if not is_instance_valid(target_to_attack) or not is_target_alive(target_to_attack):
+		clear_target()
+		return
+
+	# Si ya estamos enfocando a este mismo objetivo y el combate está activo:
+	if current_target == target_to_attack and is_active():
+		var dist_horiz := 999.0
+		if p != null:
+			dist_horiz = Vector2(
+				current_target.global_position.x - p.global_position.x,
+				current_target.global_position.z - p.global_position.z
+			).length()
+		var attack_range := get_effective_attack_range(current_target)
+
+		# Si ya estamos en rango de ataque o en estado ATTACKING:
+		# Ignorar clicks repetidos: no alterar estado, no reiniciar animación, no acercarse más al mob.
+		if state == State.ATTACKING or dist_horiz <= attack_range:
+			state = State.ATTACKING
+			return
+
+		# Si todavía estamos en aproximación hacia este mismo objetivo, continuar sin reiniciar
+		if state == State.APPROACHING:
+			return
+
+	# Si es un nuevo objetivo diferente al actual:
+	if new_target != null and new_target != current_target:
 		_connect_target(new_target)
 
 	if not is_instance_valid(current_target) or not is_target_alive(current_target):
 		clear_target()
 		return
+
+	# Comprobar inmediatamente si ya estamos en rango de ataque antes de entrar en aproximación
+	if p != null:
+		var dist_horiz := Vector2(
+			current_target.global_position.x - p.global_position.x,
+			current_target.global_position.z - p.global_position.z
+		).length()
+		var attack_range := get_effective_attack_range(current_target)
+		if dist_horiz <= attack_range:
+			state = State.ATTACKING
+			target_acquired.emit(current_target)
+			return
 
 	state = State.APPROACHING
 	target_acquired.emit(current_target)
@@ -259,8 +299,15 @@ func update_combat(delta: float, visuals: PlayerVisuals) -> void:
 			var atk_speed: float = base_atk_spd * atk_speed_mult
 			var attack_interval := 1.0 / maxf(0.05, atk_speed)
 			if _time_since_last_attack >= attack_interval:
+				# Si todavía se está reproduciendo activamente un ataque previo o de habilidad, no solapar
+				if visuals and visuals.has_method("is_playing_attack") and visuals.is_playing_attack():
+					return
 				_time_since_last_attack = 0.0
 				_execute_attack(visuals, atk_speed)
+
+## Reinicia el temporizador de cadencia del ataque básico (usado por habilidades o reinicios de ataque)
+func reset_attack_timer() -> void:
+	_time_since_last_attack = 0.0
 
 func _face_target() -> void:
 	if _parent_body == null or not is_instance_valid(current_target):
