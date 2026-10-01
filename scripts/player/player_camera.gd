@@ -61,7 +61,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed and UIManager.is_mouse_over_ui(get_tree()):
 			return
 
-		# Click Izquierdo: Seleccionar objetivo en el mundo 3D (mobs, dummies, jugadores)
+		# Click Izquierdo: Seleccionar objetivo en el mundo 3D (mobs, dummies, jugadores) o Moverse (Click-to-Move)
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			var parent_node := get_parent() as Node3D
 			var exclude: Array[RID] = []
@@ -72,6 +72,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			if hit_target != null and parent_node and parent_node.has_method("set_combat_target"):
 				parent_node.set_combat_target(hit_target)
 				return
+
+			# Si no es un objetivo atacable, raycast al suelo del mundo para desplazarse hasta allí
+			if parent_node and parent_node.has_method("move_to_ground_position"):
+				var ground_pos := _raycast_ground_position(event.position, exclude)
+				if ground_pos != Vector3.INF:
+					parent_node.move_to_ground_position(ground_pos)
+					return
 
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
@@ -147,3 +154,34 @@ func snap_behind_player() -> void:
 
 func _apply_rotation() -> void:
 	rotation = Vector3(current_pitch, current_yaw, 0.0)
+
+## Proyecta un rayo desde la posición del cursor de la pantalla hacia el suelo del mundo 3D
+func _raycast_ground_position(screen_pos: Vector2, exclude: Array[RID]) -> Vector3:
+	if camera == null or not camera.is_inside_tree():
+		return Vector3.INF
+	var space_state := camera.get_world_3d().direct_space_state
+	if space_state == null:
+		return Vector3.INF
+
+	var ray_origin := camera.project_ray_origin(screen_pos)
+	var ray_dir := camera.project_ray_normal(screen_pos)
+	var ray_end := ray_origin + ray_dir * 250.0
+
+	var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
+	query.exclude = exclude
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+
+	var hit := space_state.intersect_ray(query)
+	if not hit.is_empty():
+		return hit.position
+
+	# Fallback: Intersección con el plano horizontal a la altura de los pies del jugador
+	var parent_node := get_parent() as Node3D
+	var floor_y := parent_node.global_position.y if parent_node else 0.0
+	var ground_plane := Plane(Vector3.UP, floor_y)
+	var plane_hit = ground_plane.intersects_ray(ray_origin, ray_dir)
+	if plane_hit != null:
+		return plane_hit
+
+	return Vector3.INF

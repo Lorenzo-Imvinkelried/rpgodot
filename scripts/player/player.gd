@@ -6,6 +6,7 @@ extends CharacterBody3D
 ## Cámara libre con click derecho sin alterar la dirección de marcha y con cursor siempre visible.
 
 const DEFAULT_CONFIG = preload("res://resources/player/default_player_config.tres")
+const GroundMarkerScript = preload("res://scripts/player/ground_marker.gd")
 
 @export var config: PlayerConfig = DEFAULT_CONFIG
 @export var is_moving: bool = false
@@ -28,6 +29,13 @@ var _dash_cooldown_timer: float = 0.0
 var _dash_velocity: Vector3 = Vector3.ZERO
 var _was_space_pressed: bool = false
 
+# Variables y componentes de Click-to-Move (desplazamiento guiado por ratón)
+var _ground_marker: Node3D = null
+var _has_click_move: bool = false
+var _click_move_target: Vector3 = Vector3.ZERO
+var _stuck_timer: float = 0.0
+var _last_pos: Vector3 = Vector3.ZERO
+
 func _enter_tree() -> void:
 	var peer_id := name.to_int()
 	if peer_id <= 0:
@@ -47,6 +55,11 @@ func _ready() -> void:
 	camera_pivot.setup(is_local)
 	_prev_global_pos = global_position
 	visuals.update_animation(is_moving, 0.0)
+
+	if is_local:
+		var marker_scene := preload("res://scenes/player/ground_marker.tscn")
+		_ground_marker = marker_scene.instantiate() as Node3D
+		add_child(_ground_marker)
 
 	if combat_target:
 		combat_target.died.connect(_on_player_died)
@@ -90,8 +103,40 @@ func _on_player_died() -> void:
 func set_combat_target(target: Node3D) -> void:
 	if is_inside_tree() and multiplayer.has_multiplayer_peer() and not is_multiplayer_authority():
 		return
+	clear_click_move()
 	if combat_controller:
 		combat_controller.set_target(target)
+
+## Inicia el desplazamiento guiado hacia un punto del suelo (Click-to-Move)
+func move_to_ground_position(target_pos: Vector3) -> void:
+	if not is_multiplayer_authority():
+		return
+
+	# Si se encontraba en combate activo o aproximándose, cancelarlo inmediatamente
+	if combat_controller and combat_controller.is_active():
+		combat_controller.clear_target()
+
+	_click_move_target = target_pos
+	_has_click_move = true
+	_stuck_timer = 0.0
+	_last_pos = global_position
+
+	if _ground_marker:
+		_ground_marker.show_at(target_pos)
+
+## Cancela el desplazamiento guiado y oculta el marcador visual del suelo
+func clear_click_move() -> void:
+	if _has_click_move:
+		_has_click_move = false
+		_stuck_timer = 0.0
+		if _ground_marker:
+			_ground_marker.fade_out()
+
+func has_click_move() -> bool:
+	return _has_click_move
+
+func get_click_move_target() -> Vector3:
+	return _click_move_target
 
 func _process(delta: float) -> void:
 	if visuals:
@@ -140,6 +185,7 @@ func _process_movement(delta: float) -> void:
 	if status_ctrl and status_ctrl.has_method("is_stunned") and status_ctrl.is_stunned():
 		if combat_target and combat_target.is_guarding:
 			combat_target.is_guarding = false
+		clear_click_move()
 		_dash_timer = 0.0
 		velocity.x = 0.0
 		velocity.z = 0.0
@@ -217,6 +263,7 @@ func _process_movement(delta: float) -> void:
 			combat_target.trigger_invulnerability(dash_dur)
 		if combat_controller and combat_controller.is_active():
 			combat_controller.clear_target()
+		clear_click_move()
 
 		velocity.x = _dash_velocity.x
 		velocity.z = _dash_velocity.z
@@ -224,13 +271,16 @@ func _process_movement(delta: float) -> void:
 		move_and_slide()
 		return
 
-	# Cancelar combate automático si el jugador presiona manualmente cualquier tecla de movimiento
+	# Cancelar combate automático y click-to-move si el jugador presiona manualmente cualquier tecla de movimiento
 	var has_manual_input := (turn_input != 0.0 or forward_input != 0.0)
-	if has_manual_input and combat_controller and combat_controller.is_active():
-		combat_controller.clear_target()
+	if has_manual_input:
+		if combat_controller and combat_controller.is_active():
+			combat_controller.clear_target()
+		clear_click_move()
 
 	# Auto-aproximación hacia el objetivo de combate (directo, en línea recta y sin alterar la cámara)
 	if not has_manual_input and combat_controller and combat_controller.is_approaching():
+		clear_click_move()
 		var approach_dir := combat_controller.get_approach_direction()
 		if approach_dir != Vector3.ZERO:
 			# Orientación directa hacia el objetivo
@@ -245,11 +295,49 @@ func _process_movement(delta: float) -> void:
 
 	# Si está en rango atacando, frenar en seco inmediatamente para dar los golpes
 	if not has_manual_input and combat_controller and combat_controller.is_attacking():
+		clear_click_move()
 		velocity.x = 0.0
 		velocity.z = 0.0
 		is_moving = false
 		move_and_slide()
 		return
+
+	# Desplazamiento guiado por ratón hacia el punto marcado (Click-to-Move)
+	if not has_manual_input and _has_click_move:
+		var diff := _click_move_target - global_position
+		diff.y = 0.0
+		var dist := diff.length()
+		var arrival_dist := 0.35
+
+		# Detección de atascamiento contra obstáculos
+		if is_on_wall() and global_position.distance_squared_to(_last_pos) < 0.0001:
+			_stuck_timer += delta
+			if _stuck_timer > 0.4:
+				clear_click_move()
+				velocity.x = 0.0
+				velocity.z = 0.0
+				is_moving = false
+				move_and_slide()
+				return
+		else:
+			_stuck_timer = 0.0
+		_last_pos = global_position
+
+		if dist <= arrival_dist:
+			clear_click_move()
+			velocity.x = 0.0
+			velocity.z = 0.0
+			is_moving = false
+			move_and_slide()
+			return
+		else:
+			var move_dir := diff / dist
+			rotation.y = atan2(-move_dir.x, -move_dir.z)
+			velocity.x = move_dir.x * config.forward_speed * move_speed_mult
+			velocity.z = move_dir.z * config.forward_speed * move_speed_mult
+			is_moving = true
+			move_and_slide()
+			return
 
 	if turn_input != 0.0:
 		var turn_delta := turn_input * config.turn_speed * delta

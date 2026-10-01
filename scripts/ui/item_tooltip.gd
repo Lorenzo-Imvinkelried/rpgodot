@@ -11,6 +11,8 @@ extends PanelContainer
 @onready var value_label: Label = %ValueLabel
 
 func _ready() -> void:
+	top_level = true
+	z_index = 120
 	hide()
 	mouse_filter = MOUSE_FILTER_IGNORE
 
@@ -90,18 +92,19 @@ func display_item(item: ItemData, global_mouse_pos: Vector2) -> void:
 
 func _update_smart_position(mouse_pos: Vector2) -> void:
 	reset_size()
+	var tooltip_size := get_combined_minimum_size()
+	size = tooltip_size
 	var vp_size := get_viewport_rect().size
-	var tooltip_size := size
 
-	var target_x := mouse_pos.x + 14.0
-	var target_y := mouse_pos.y + 14.0
+	var target_x := mouse_pos.x + 12.0
+	var target_y := mouse_pos.y + 12.0
 
 	# Clamping horizontal (desplegar a la izquierda si no cabe a la derecha)
 	if target_x + tooltip_size.x > vp_size.x - 10.0:
-		target_x = mouse_pos.x - tooltip_size.x - 14.0
+		target_x = mouse_pos.x - tooltip_size.x - 12.0
 
 	# Clamping vertical (desplegar hacia arriba si no cabe abajo)
 	if target_y + tooltip_size.y > vp_size.y - 10.0:
-		target_y = mouse_pos.y - tooltip_size.y - 14.0
+		target_y = mouse_pos.y - tooltip_size.y - 12.0
 
 	global_position = Vector2(maxf(10.0, target_x), maxf(10.0, target_y))

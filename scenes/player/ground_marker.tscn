@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://ground_marker_821"]
+
+[ext_resource type="Script" path="res://scripts/player/ground_marker.gd" id="1_marker"]
+
+[node name="GroundMarker" type="Node3D"]
+visible = false
+top_level = true
+script = ExtResource("1_marker")

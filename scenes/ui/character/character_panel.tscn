@@ -110,4 +110,3 @@ columns = 3
 [node name="ItemTooltip" parent="." instance=ExtResource("2_tt")]
 unique_name_in_owner = true
 visible = false
-layout_mode = 2
