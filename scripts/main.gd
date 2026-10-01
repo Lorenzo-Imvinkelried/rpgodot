@@ -6,7 +6,8 @@ extends Node3D
 
 @onready var network_manager: NetworkManager = $NetworkManager
 @onready var connection_menu: ConnectionMenu = $UI/ConnectionMenu
-@onready var game_hud: GameHUD = $GameHUD
+@onready var game_hud: GameHUD = get_node_or_null("UI/GameHUD") if has_node("UI/GameHUD") else get_node_or_null("GameHUD")
+@onready var retro_post_process: RetroPostProcess = get_node_or_null("RetroPostProcess")
 @onready var players_container: Node3D = $Players
 
 var player_scene: PackedScene = preload("res://scenes/player/player.tscn")

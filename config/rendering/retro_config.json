@@ -1,0 +1,12 @@
+{
+  "retro": {
+    "enabled": true,
+    "target_vertical_resolution": 270.0,
+    "pixel_scale": 4.0,
+    "use_target_resolution": true,
+    "enable_dither": false,
+    "dither_strength": 0.05,
+    "color_depth": 32.0,
+    "toggle_hotkey": "F10"
+  }
+}
