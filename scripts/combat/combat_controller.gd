@@ -163,17 +163,13 @@ func set_target(new_target: Node3D) -> void:
 	attack_target(new_target)
 
 func clear_target() -> void:
+	if current_target == null and state == State.IDLE:
+		return
 	_disconnect_target()
 	var had_target := (current_target != null or state != State.IDLE)
 	current_target = null
 	state = State.IDLE
 	_pending_impacts.clear()
-
-	var p := _get_parent_body()
-	if p:
-		var visuals := p.get_node_or_null("Visuals") as PlayerVisuals
-		if visuals and visuals.has_method("stop_attack_and_idle"):
-			visuals.stop_attack_and_idle()
 
 	if had_target:
 		target_lost.emit()
@@ -213,11 +209,13 @@ func update_combat(delta: float, visuals: PlayerVisuals) -> void:
 				var dmg_scale: float = float(info.get("damage_scale", 1.0))
 				_apply_impact(tgt, hit_idx, allow_td, dmg_scale)
 
-	# Si el objetivo murió o dejó de ser válido, detener combate inmediatamente
-	if not is_instance_valid(current_target) or not is_target_alive(current_target):
+	# Si no hay combate activo o no hay objetivo, nada que procesar
+	if state == State.IDLE or not is_instance_valid(current_target):
+		return
+
+	# Si el objetivo murió, detener combate inmediatamente
+	if not is_target_alive(current_target):
 		clear_target()
-		if visuals and visuals.has_method("stop_attack_and_idle"):
-			visuals.stop_attack_and_idle()
 		return
 
 	var p := _get_parent_body()

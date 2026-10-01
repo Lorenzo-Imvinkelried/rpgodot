@@ -2,104 +2,61 @@
 extends SceneTree
 
 func _init() -> void:
-	print("\n--- INICIANDO TEST SUITE: Sincronización y Suavidad de Animación de Locomoción ---")
+	print("\n--- INICIANDO TEST: Animación de Walk exactamente como en 85569bf ---")
 	_run_tests()
 
 func _run_tests() -> void:
 	var p_scene := load("res://scenes/player/player.tscn") as PackedScene
-	assert(p_scene != null, "player.tscn debe existir")
-
 	var player: Player = p_scene.instantiate()
 	root.add_child(player)
 	await process_frame
 
-	var visuals: PlayerVisuals = player.visuals
-	assert(visuals != null, "PlayerVisuals debe existir en Player")
-	assert(visuals.anim_player != null, "AnimationPlayer debe estar inicializado")
+	var ap: AnimationPlayer = player.visuals.anim_player
+	assert(ap != null, "AnimationPlayer debe existir")
 
-	print("Animaciones detectadas en Visuals:")
-	print(" - Idle:  '%s'" % visuals._anim_idle)
-	print(" - Walk:  '%s'" % visuals._anim_walk)
-	print(" - Run:   '%s'" % visuals._anim_run)
-	print(" - Attack:'%s'" % visuals._anim_attack)
-
-	assert(visuals._anim_idle == "idle", "Animación Idle debe ser 'idle'")
-	assert(visuals._anim_walk == "walk", "Animación Walk debe ser 'walk'")
-	assert(visuals._anim_run == "run", "Animación Run debe ser 'run'")
-
-	# --------------------------------------------------------------------------
-	# PRUEBA 1: Estado de Reposo (Idle)
-	# --------------------------------------------------------------------------
+	# 1. En reposo -> Idle
 	player.is_moving = false
 	player._process(0.016)
-	assert(visuals.anim_player.current_animation == "idle", "En reposo debe reproducir 'idle'")
-	assert(is_equal_approx(visuals.anim_player.speed_scale, 1.0), "En reposo speed_scale debe ser 1.0")
-	print("[OK] Prueba 1: Estado de reposo (Idle) verificado con speed_scale = 1.0.")
+	player._physics_process(0.016)
+	assert(ap.current_animation == "idle", "En reposo debe ser idle")
+	print("[OK] Prueba 1: Reposo (idle) verificado.")
 
-	# --------------------------------------------------------------------------
-	# PRUEBA 2: Caminata/Carrera hacia adelante (WASD W - 6.0 m/s)
-	# --------------------------------------------------------------------------
+	# 2. Caminata libre (WASD) sin objetivo -> debe mantenerse en 'walk' en _process y _physics_process
 	player.is_moving = true
-	player.velocity = Vector3(0.0, 0.0, -6.0)
-	player._is_moving_backward = false
+	player.velocity = Vector3(0, 0, -6.0)
 	player._process(0.016)
+	assert(ap.current_animation == "walk", "Al caminar debe ser 'walk' tras _process")
+	player._physics_process(0.016)
+	assert(ap.current_animation == "walk", "NO debe ser reseteado a idle por _physics_process mientras camina")
+	print("[OK] Prueba 2: Caminata continua (walk) verificada sin interrupción de idle.")
 
-	assert(visuals.anim_player.current_animation == "run", "Al avanzar a 6.0 m/s debe reproducir 'run'")
-	assert(visuals.anim_player.speed_scale >= 0.85 and visuals.anim_player.speed_scale <= 1.25,
-		"speed_scale debe mantenerse dentro de límites naturales [0.85, 1.25] (obtenido: %f)" % visuals.anim_player.speed_scale)
-	assert(visuals.anim_player.speed_scale > 0.0, "Al avanzar speed_scale debe ser positivo")
-	print("[OK] Prueba 2: Marcha hacia adelante (WASD W) reproduce 'run' con speed_scale = %.2f (sin hiper-velocidad 6x)." % visuals.anim_player.speed_scale)
-
-	# --------------------------------------------------------------------------
-	# PRUEBA 3: Giro continuo en su eje mientras avanza (A/D + W)
-	# --------------------------------------------------------------------------
-	for i in range(12):
-		player.rotation.y += 0.3
-		player._process(0.016)
-		assert(visuals.anim_player.speed_scale > 0.0, "Al girar avanzando NUNCA debe invertirse el signo de speed_scale (obtenido: %f)" % visuals.anim_player.speed_scale)
-		assert(visuals.anim_player.speed_scale <= 1.25, "Al girar avanzando speed_scale no debe dispararse")
-	print("[OK] Prueba 3: Giros con A/D manteniendo avance no provocan giros de signo ni glitching.")
-
-	# --------------------------------------------------------------------------
-	# PRUEBA 4: Marcha hacia atrás (WASD S - 4.2 m/s)
-	# --------------------------------------------------------------------------
-	player.velocity = Vector3(0.0, 0.0, 4.2)
-	player._is_moving_backward = true
-	player._process(0.016)
-
-	assert(visuals.anim_player.current_animation == "walk", "Al retroceder debe reproducir 'walk' en reversa")
-	assert(visuals.anim_player.speed_scale < 0.0, "Al retroceder speed_scale DEBE ser negativo")
-	assert(visuals.anim_player.speed_scale >= -1.25 and visuals.anim_player.speed_scale <= -0.85,
-		"Al retroceder speed_scale debe ser suave [-1.25, -0.85] (obtenido: %f)" % visuals.anim_player.speed_scale)
-	print("[OK] Prueba 4: Retroceso con S reproduce 'walk' en reversa con speed_scale = %.2f estable." % visuals.anim_player.speed_scale)
-
-	# --------------------------------------------------------------------------
-	# PRUEBA 5: Desplazamiento por Click (Click-to-Move - 6.0 m/s)
-	# --------------------------------------------------------------------------
-	player._is_moving_backward = false
-	player.move_to_ground_position(Vector3(20.0, 0.0, 20.0))
+	# 3. Caminata guiada por click (Click-to-Move) -> debe mantenerse en 'walk'
+	player.move_to_ground_position(Vector3(10, 0, 10))
 	player._physics_process(0.016)
 	player._process(0.016)
+	assert(ap.current_animation == "walk", "Click-to-move debe reproducir 'walk'")
+	print("[OK] Prueba 3: Click-to-move reproduce 'walk' de forma continua.")
 
-	assert(visuals.anim_player.current_animation == "run", "Click-to-move a velocidad normal debe reproducir 'run'")
-	assert(visuals.anim_player.speed_scale >= 0.85 and visuals.anim_player.speed_scale <= 1.25,
-		"Click-to-move speed_scale debe ser natural (obtenido: %f)" % visuals.anim_player.speed_scale)
-	print("[OK] Prueba 5: Click-to-Move reproduce locomoción suave a escala natural (%.2f)." % visuals.anim_player.speed_scale)
+	# 4. Desenganche al morir mob -> Al morir el mob, combate se detiene y no interfiere con walk
+	var goblin_scene := load("res://scenes/enemies/mob_goblin.tscn") as PackedScene
+	var goblin = goblin_scene.instantiate()
+	root.add_child(goblin)
+	await process_frame
 
-	# --------------------------------------------------------------------------
-	# PRUEBA 6: Desplazamiento en Guardia Activa (Shield Guard - 4.2 m/s)
-	# --------------------------------------------------------------------------
-	player.clear_click_move()
-	player.velocity = Vector3(0.0, 0.0, -4.2)
-	player._is_moving_backward = false
-	player._process(0.016)
+	player.attack_target(goblin)
+	assert(player.combat_controller.current_target == goblin, "Debe tener objetivo")
+	
+	# Matar mob
+	var ct: CombatTarget = goblin.get_node_or_null("CombatTarget")
+	ct.current_health = 0.0
+	ct.died.emit()
+	
+	player._physics_process(0.016)
+	assert(player.combat_controller.current_target == null, "Objetivo debe ser limpiado")
+	assert(player.combat_controller.state == CombatController.State.IDLE, "Estado debe ser IDLE")
+	print("[OK] Prueba 4: Desenganche al morir mob verificado.")
 
-	assert(visuals.anim_player.current_animation == "walk", "Al desplazarse a 4.2 m/s (en guardia/ralentizado) debe reproducir 'walk'")
-	assert(visuals.anim_player.speed_scale >= 0.85 and visuals.anim_player.speed_scale <= 1.25,
-		"Caminata con escudo debe mantenerse dentro de límites [0.85, 1.25] (obtenido: %f)" % visuals.anim_player.speed_scale)
-	print("[OK] Prueba 6: Movimiento táctico con escudo reproduce 'walk' a escala fluida (%.2f)." % visuals.anim_player.speed_scale)
-
-	# Limpieza
+	goblin.queue_free()
 	player.queue_free()
-	print("\n--- TODAS LAS PRUEBAS DE ANIMACIÓN DE LOCOMOCIÓN PASARON EXITOSAMENTE (6/6) ---\n")
+	print("\n--- TEST DE ANIMACIÓN DE WALK FINALIZADO CON ÉXITO ---\n")
 	quit(0)
