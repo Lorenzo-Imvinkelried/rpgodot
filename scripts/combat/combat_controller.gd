@@ -44,18 +44,37 @@ func get_stats() -> CharacterStats:
 	stats = CharacterStats.create_player_default()
 	return stats
 
-func set_target(new_target: Node3D) -> void:
+## Selecciona un objetivo sin iniciar aproximación ni auto-ataque inmediato.
+func select_target(new_target: Node3D) -> void:
 	if new_target == null or new_target == _parent_body:
 		clear_target()
 		return
 
-	# Si ya estamos enfocados en este mismo objetivo, ignorar clics repetidos
-	if current_target == new_target and is_active():
+	if current_target == new_target and state == State.IDLE:
 		return
 
 	current_target = new_target
+	state = State.IDLE
+	target_acquired.emit(current_target)
+
+## Inicia aproximación y auto-ataque hacia el objetivo indicado o actual.
+func attack_target(new_target: Node3D = null) -> void:
+	if new_target != null:
+		if new_target == _parent_body:
+			clear_target()
+			return
+		current_target = new_target
+
+	if not is_instance_valid(current_target):
+		clear_target()
+		return
+
 	state = State.APPROACHING
 	target_acquired.emit(current_target)
+
+## Establece objetivo e inicia aproximación de combate (retrocompatibilidad).
+func set_target(new_target: Node3D) -> void:
+	attack_target(new_target)
 
 func clear_target() -> void:
 	if current_target != null:

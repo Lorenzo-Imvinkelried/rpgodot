@@ -104,21 +104,56 @@ func _get_slot_node(slot_index: int) -> Control:
 		return slots_container.get_child(slot_index) as Control
 	return null
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
+
+	if event is InputEventKey and event.pressed and not event.echo:
+		var slot_to_activate: int = -1
+		match event.keycode:
+			KEY_1, KEY_KP_1:
+				slot_to_activate = 0
+			KEY_2, KEY_KP_2:
+				slot_to_activate = 1
+			KEY_3, KEY_KP_3:
+				slot_to_activate = 2
+			KEY_4, KEY_KP_4:
+				slot_to_activate = 3
+			KEY_5, KEY_KP_5:
+				slot_to_activate = 4
+			KEY_6, KEY_KP_6:
+				slot_to_activate = 5
+			KEY_7, KEY_KP_7:
+				slot_to_activate = 6
+			KEY_8, KEY_KP_8:
+				slot_to_activate = 7
+			KEY_9, KEY_KP_9:
+				slot_to_activate = 8
+			KEY_0, KEY_KP_0:
+				slot_to_activate = 9
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				slot_to_activate = 10
+			KEY_EQUAL, KEY_KP_ADD:
+				slot_to_activate = 11
+
+		if slot_to_activate >= 0:
+			slot_activated.emit(slot_to_activate)
+
 func _setup_default_slots() -> void:
-	# Iconos por defecto de las acciones principales
+	# Iconos y atajos por defecto de las acciones principales
 	var default_icons: Dictionary = {
-		0: { "name": "Ataque", "icon": "⚔", "key": "1" },
-		1: { "name": "Dash", "icon": "💨", "key": "Space" },
-		2: { "name": "Guardia", "icon": "🛡", "key": "Shift" },
-		3: { "name": "Skill 4", "icon": "⚡", "key": "4" },
-		4: { "name": "Skill 5", "icon": "🔥", "key": "5" },
-		5: { "name": "Skill 6", "icon": "❄", "key": "6" },
-		6: { "name": "Skill 7", "icon": "✨", "key": "7" },
-		7: { "name": "Skill 8", "icon": "☄", "key": "8" },
-		8: { "name": "Skill 9", "icon": "🌪", "key": "9" },
-		9: { "name": "Skill 10", "icon": "🩸", "key": "0" },
-		10: { "name": "Poción HP", "icon": "🧪", "key": "-" },
-		11: { "name": "Poción MP", "icon": "🍷", "key": "=" }
+		0: { "name": "Ataque Básico (1)", "icon": "⚔", "key": "1" },
+		1: { "name": "Dash / Esquiva (Space)", "icon": "💨", "key": "Space" },
+		2: { "name": "Guardia Activa (Shift)", "icon": "🛡", "key": "Shift" },
+		3: { "name": "Relámpago (4)", "icon": "⚡", "key": "4" },
+		4: { "name": "Bola de Fuego (5)", "icon": "🔥", "key": "5" },
+		5: { "name": "Escarcha (6)", "icon": "❄", "key": "6" },
+		6: { "name": "Rayo Solar (7)", "icon": "✨", "key": "7" },
+		7: { "name": "Meteorito (8)", "icon": "☄", "key": "8" },
+		8: { "name": "Torbellino (9)", "icon": "🌪", "key": "9" },
+		9: { "name": "Tajo Sangriento (0)", "icon": "🩸", "key": "0" },
+		10: { "name": "Poción de Salud (-)", "icon": "🧪", "key": "-" },
+		11: { "name": "Poción de Maná (=)", "icon": "🍷", "key": "=" }
 	}
 
 	for i in range(TOTAL_SLOTS):
@@ -126,12 +161,22 @@ func _setup_default_slots() -> void:
 		if slot == null:
 			continue
 		var info: Dictionary = default_icons.get(i, { "name": "", "icon": "", "key": str(i + 1) })
+		slot.tooltip_text = info.get("name", "")
+		slot.mouse_filter = Control.MOUSE_FILTER_PASS
+
+		if not slot.gui_input.is_connected(_on_slot_gui_input):
+			slot.gui_input.connect(_on_slot_gui_input.bind(i))
+
 		var icon_lbl: Label = slot.get_node_or_null("IconLabel")
 		if icon_lbl:
 			icon_lbl.text = info.get("icon", "")
 		var key_lbl: Label = slot.get_node_or_null("KeyLabel")
 		if key_lbl:
 			key_lbl.text = info.get("key", str(i + 1))
+
+func _on_slot_gui_input(event: InputEvent, slot_idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		slot_activated.emit(slot_idx)
 
 func _on_stun_applied(_dur: float) -> void:
 	if stun_overlay:

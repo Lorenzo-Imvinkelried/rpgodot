@@ -69,8 +69,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				exclude.append((parent_node as CollisionObject3D).get_rid())
 
 			var hit_target := TargetDetectorScript.find_target_at_screen_pos(camera, event.position, exclude)
-			if hit_target != null and parent_node and parent_node.has_method("set_combat_target"):
-				parent_node.set_combat_target(hit_target)
+			if hit_target != null and parent_node:
+				if parent_node.has_method("select_target"):
+					parent_node.select_target(hit_target)
+				elif parent_node.has_method("set_combat_target"):
+					parent_node.set_combat_target(hit_target)
 				return
 
 			# Si no es un objetivo atacable, raycast al suelo del mundo para desplazarse hasta allí
@@ -88,8 +91,16 @@ func _unhandled_input(event: InputEvent) -> void:
 					exclude.append((parent_node as CollisionObject3D).get_rid())
 
 				var hit_target := TargetDetectorScript.find_target_at_screen_pos(camera, event.position, exclude)
-				if hit_target != null and parent_node and parent_node.has_method("set_combat_target"):
-					parent_node.set_combat_target(hit_target)
+				if hit_target != null and parent_node:
+					# Si el mob ya estaba seleccionado previamente, el click derecho inicia el ataque
+					if parent_node.has_method("get_combat_target") and parent_node.get_combat_target() == hit_target:
+						if parent_node.has_method("attack_target"):
+							parent_node.attack_target(hit_target)
+					elif parent_node.has_method("select_target"):
+						# Si no estaba seleccionado, solamente lo selecciona sin correr a pegarle
+						parent_node.select_target(hit_target)
+					elif parent_node.has_method("set_combat_target"):
+						parent_node.set_combat_target(hit_target)
 					is_rmb_held = false
 					return
 				is_rmb_held = true
@@ -120,9 +131,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		var parent_node := get_parent() as Node3D
 		if parent_node:
-			var combat_ctrl = parent_node.get_node_or_null("CombatController")
-			if combat_ctrl and combat_ctrl.current_target != null:
-				combat_ctrl.clear_target()
+			if parent_node.has_method("clear_combat_target"):
+				parent_node.clear_combat_target()
+			else:
+				var combat_ctrl = parent_node.get_node_or_null("CombatController")
+				if combat_ctrl and combat_ctrl.current_target != null:
+					combat_ctrl.clear_target()
 
 func _process(delta: float) -> void:
 	if not camera.current:

@@ -48,6 +48,13 @@ func _process(delta: float) -> void:
 			_current_combo_hits = 0
 			_update_tap_visuals()
 
+	# Sincronizar barra de maná cuando se consumen o restauran puntos de MP
+	if _bound_stats:
+		var stat_mp := float(_bound_stats.current_mp)
+		var stat_max_mp := float(_bound_stats.max_mp)
+		if stat_mp != current_mana or stat_max_mp != max_mana:
+			set_mana(stat_mp, stat_max_mp)
+
 ## Vincula el PlayerFrame al nodo del jugador local para escuchar sus señales en vivo.
 func bind_player(player: Node) -> void:
 	_bound_player = player

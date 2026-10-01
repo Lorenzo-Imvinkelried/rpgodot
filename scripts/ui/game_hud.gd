@@ -48,6 +48,7 @@ func _process(_delta: float) -> void:
 		_try_auto_bind_player()
 	else:
 		_sync_target()
+		_check_cast_movement_interrupt()
 
 ## Vincula explícitamente el HUD al nodo del jugador local.
 func bind_player(player_node: Node) -> void:
@@ -57,8 +58,21 @@ func bind_player(player_node: Node) -> void:
 
 	if player_frame:
 		player_frame.bind_player(_bound_player)
+
 	if hotbar:
 		hotbar.bind_player(_bound_player)
+		if not hotbar.slot_activated.is_connected(_on_hotbar_slot_activated):
+			hotbar.slot_activated.connect(_on_hotbar_slot_activated)
+
+	var skill_ctrl := _bound_player.get_node_or_null("SkillController") as Node
+	if skill_ctrl and skill_ctrl.has_signal("skill_cast_failed"):
+		if not skill_ctrl.skill_cast_failed.is_connected(_on_skill_cast_failed):
+			skill_ctrl.skill_cast_failed.connect(_on_skill_cast_failed)
+
+	var status_ctrl := _bound_player.get_node_or_null("StatusEffectController") as Node
+	if status_ctrl and cast_bar and status_ctrl.has_signal("stun_applied"):
+		if not status_ctrl.stun_applied.is_connected(_on_stun_interrupt_cast):
+			status_ctrl.stun_applied.connect(_on_stun_interrupt_cast)
 
 	if inventory_panel:
 		var inv_ctrl := _bound_player.get_node_or_null("InventoryController") as InventoryController
@@ -140,5 +154,38 @@ func _on_item_equip_requested(item: ItemData, slot_idx: int) -> void:
 		var ok := eq_ctrl.equip_item(item, ItemData.EquipmentSlot.NONE, inv_ctrl)
 		if ok:
 			inv_ctrl.remove_item_at(slot_idx, item.stack_count)
+
+func _check_cast_movement_interrupt() -> void:
+	if cast_bar and cast_bar.is_casting() and is_instance_valid(_bound_player):
+		var moving: bool = _bound_player.get("is_moving") if ("is_moving" in _bound_player) else false
+		if moving:
+			cast_bar.cancel_cast()
+
+func _on_hotbar_slot_activated(slot_idx: int) -> void:
+	if _bound_player == null or not is_instance_valid(_bound_player):
+		return
+
+	var skill_ctrl := _bound_player.get_node_or_null("SkillController")
+	if skill_ctrl == null:
+		return
+
+	var combat_ctrl := _bound_player.get_node_or_null("CombatController") as CombatController
+	var current_tgt: Node3D = combat_ctrl.current_target if combat_ctrl else null
+
+	if skill_ctrl.has_method("activate_slot"):
+		skill_ctrl.activate_slot(slot_idx, current_tgt, cast_bar, hotbar)
+
+func _on_skill_cast_failed(reason: String) -> void:
+	update_status(reason)
+	var timer := get_tree().create_timer(2.0)
+	if timer:
+		timer.timeout.connect(func():
+			if status_label and status_label.text == reason:
+				update_status("")
+		)
+
+func _on_stun_interrupt_cast(_dur: float) -> void:
+	if cast_bar and cast_bar.is_casting():
+		cast_bar.cancel_cast()
 
 

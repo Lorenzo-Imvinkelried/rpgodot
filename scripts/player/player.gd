@@ -18,6 +18,7 @@ const GroundMarkerScript = preload("res://scripts/player/ground_marker.gd")
 @onready var combat_target: CombatTarget = get_node_or_null("CombatTarget")
 @onready var inventory_controller: InventoryController = get_node_or_null("InventoryController")
 @onready var equipment_controller: EquipmentController = get_node_or_null("EquipmentController")
+@onready var skill_controller: SkillController = get_node_or_null("SkillController")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var _was_forward_pressed: bool = false
@@ -29,8 +30,9 @@ var _dash_cooldown_timer: float = 0.0
 var _dash_velocity: Vector3 = Vector3.ZERO
 var _was_space_pressed: bool = false
 
-# Variables y componentes de Click-to-Move (desplazamiento guiado por ratón)
+# Variables y componentes de Click-to-Move (desplazamiento guiado por ratón) y targeting
 var _ground_marker: Node3D = null
+var _target_indicator: Node3D = null
 var _has_click_move: bool = false
 var _click_move_target: Vector3 = Vector3.ZERO
 var _stuck_timer: float = 0.0
@@ -61,6 +63,20 @@ func _ready() -> void:
 		_ground_marker = marker_scene.instantiate() as Node3D
 		add_child(_ground_marker)
 
+		var target_ind_scene := preload("res://scenes/combat/target_indicator_3d.tscn")
+		_target_indicator = target_ind_scene.instantiate() as Node3D
+		add_child(_target_indicator)
+
+		if combat_controller:
+			combat_controller.target_acquired.connect(func(target_node: Node3D):
+				if _target_indicator and _target_indicator.has_method("set_target"):
+					_target_indicator.set_target(target_node)
+			)
+			combat_controller.target_lost.connect(func():
+				if _target_indicator and _target_indicator.has_method("clear_target"):
+					_target_indicator.clear_target()
+			)
+
 	if combat_target:
 		combat_target.died.connect(_on_player_died)
 
@@ -75,6 +91,11 @@ func _ready() -> void:
 		equipment_controller.name = "EquipmentController"
 		add_child(equipment_controller)
 		_setup_starter_equipment()
+
+	if skill_controller == null:
+		skill_controller = SkillController.new()
+		skill_controller.name = "SkillController"
+		add_child(skill_controller)
 
 func _setup_starter_inventory() -> void:
 	if inventory_controller:
@@ -99,13 +120,38 @@ func _on_player_died() -> void:
 			combat_target.sync_reset_health()
 	)
 
-## Establece un objetivo de combate para auto-aproximación y ataque.
-func set_combat_target(target: Node3D) -> void:
+## Selecciona un objetivo de combate sin iniciar aproximación ni ataque automático.
+func select_target(target: Node3D) -> void:
 	if is_inside_tree() and multiplayer.has_multiplayer_peer() and not is_multiplayer_authority():
 		return
 	clear_click_move()
 	if combat_controller:
-		combat_controller.set_target(target)
+		combat_controller.select_target(target)
+
+## Inicia aproximación automática y ataque hacia el objetivo indicado o actual.
+func attack_target(target: Node3D = null) -> void:
+	if is_inside_tree() and multiplayer.has_multiplayer_peer() and not is_multiplayer_authority():
+		return
+	clear_click_move()
+	if combat_controller:
+		combat_controller.attack_target(target)
+
+## Establece un objetivo de combate para auto-aproximación y ataque (retrocompatibilidad).
+func set_combat_target(target: Node3D) -> void:
+	attack_target(target)
+
+## Obtiene el objetivo actual del CombatController
+func get_combat_target() -> Node3D:
+	if combat_controller:
+		return combat_controller.current_target
+	return null
+
+## Limpia y deselecciona el objetivo actual
+func clear_combat_target() -> void:
+	if is_inside_tree() and multiplayer.has_multiplayer_peer() and not is_multiplayer_authority():
+		return
+	if combat_controller:
+		combat_controller.clear_target()
 
 ## Inicia el desplazamiento guiado hacia un punto del suelo (Click-to-Move)
 func move_to_ground_position(target_pos: Vector3) -> void:
