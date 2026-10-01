@@ -1,0 +1,120 @@
+[gd_scene load_steps=15 format=3 uid="uid://mob_wolf_9381"]
+
+[ext_resource type="Script" path="res://scripts/gameplay/enemies/mob.gd" id="1_mob"]
+[ext_resource type="Script" path="res://scripts/combat/combat_target.gd" id="2_target"]
+[ext_resource type="Script" path="res://scripts/combat/status_effect_controller.gd" id="3_status"]
+[ext_resource type="PackedScene" path="res://scenes/combat/health_bar_3d.tscn" id="4_hbar"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_wolf"]
+radius = 0.45
+height = 1.4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fur"]
+resource_local_to_scene = true
+albedo_color = Color(0.24, 0.25, 0.29, 1)
+roughness = 0.8
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+material = SubResource("StandardMaterial3D_fur")
+radius = 0.32
+height = 1.1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dark"]
+resource_local_to_scene = true
+albedo_color = Color(0.18, 0.19, 0.22, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="BoxMesh_head"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.32, 0.3, 0.45)
+
+[sub_resource type="BoxMesh" id="BoxMesh_snout"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.18, 0.16, 0.25)
+
+[sub_resource type="PrismMesh" id="PrismMesh_ear"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.1, 0.18, 0.1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eyes"]
+resource_local_to_scene = true
+shading_mode = 0
+albedo_color = Color(1, 0.22, 0.1, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_eye"]
+material = SubResource("StandardMaterial3D_eyes")
+radius = 0.05
+height = 0.1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_leg"]
+material = SubResource("StandardMaterial3D_dark")
+top_radius = 0.08
+bottom_radius = 0.06
+height = 0.45
+
+[node name="MobWolf" type="CharacterBody3D" groups=["enemies", "targetable"]]
+collision_layer = 1
+collision_mask = 1
+script = ExtResource("1_mob")
+blueprint_type = "wolf"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+shape = SubResource("CapsuleShape3D_wolf")
+
+[node name="Visuals" type="Node3D" parent="."]
+
+[node name="BodyMesh" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0.55, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="HeadMesh" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.68, -0.52)
+mesh = SubResource("BoxMesh_head")
+
+[node name="SnoutMesh" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, -0.78)
+mesh = SubResource("BoxMesh_snout")
+
+[node name="LeftEar" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.11, 0.9, -0.48)
+mesh = SubResource("PrismMesh_ear")
+
+[node name="RightEar" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11, 0.9, -0.48)
+mesh = SubResource("PrismMesh_ear")
+
+[node name="LeftEye" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.12, 0.72, -0.66)
+mesh = SubResource("SphereMesh_eye")
+
+[node name="RightEye" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.72, -0.66)
+mesh = SubResource("SphereMesh_eye")
+
+[node name="LegFrontLeft" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.22, -0.35)
+mesh = SubResource("CylinderMesh_leg")
+
+[node name="LegFrontRight" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.22, -0.35)
+mesh = SubResource("CylinderMesh_leg")
+
+[node name="LegBackLeft" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.22, 0.35)
+mesh = SubResource("CylinderMesh_leg")
+
+[node name="LegBackRight" type="MeshInstance3D" parent="Visuals"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.22, 0.35)
+mesh = SubResource("CylinderMesh_leg")
+
+[node name="HealthBar3D" parent="." instance=ExtResource("4_hbar")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
+
+[node name="CombatTarget" type="Node" parent="."]
+script = ExtResource("2_target")
+target_name = "Lobo Feroz"
+max_health = 110.0
+
+[node name="StatusEffectController" type="Node" parent="."]
+script = ExtResource("3_status")

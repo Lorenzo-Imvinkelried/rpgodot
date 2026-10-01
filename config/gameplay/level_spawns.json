@@ -1,6 +1,39 @@
 [
-  { "type": "goblin", "pos": [8.0, 0.0, 5.0], "level": 1, "stance": "neutral", "isBoss": false },
-  { "type": "goblin", "pos": [12.0, 0.0, 8.0], "level": 2, "stance": "violent", "isBoss": false },
-  { "type": "wolf", "pos": [-10.0, 0.0, -8.0], "level": 2, "stance": "violent", "isBoss": false },
-  { "type": "dragon_boss", "pos": [0.0, 0.0, 20.0], "level": 10, "stance": "violent", "isBoss": true }
+  { "type": "goblin", "pos": [8.0, 0.0, 16.0], "level": 1, "stance": "neutral", "isBoss": false },
+  { "type": "goblin", "pos": [-8.0, 0.0, 16.0], "level": 1, "stance": "neutral", "isBoss": false },
+  { "type": "goblin", "pos": [0.0, 0.0, 22.0], "level": 2, "stance": "violent", "isBoss": false },
+
+  { "type": "goblin", "pos": [-35.0, 0.0, 10.0], "level": 2, "stance": "neutral", "isBoss": false },
+  { "type": "goblin", "pos": [-40.0, 0.0, 15.0], "level": 2, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [-50.0, 0.0, 8.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [-52.0, 0.0, -5.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [-60.0, 0.0, 0.0], "level": 4, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [-62.0, 0.0, 6.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [-62.0, 0.0, -6.0], "level": 3, "stance": "violent", "isBoss": false },
+
+  { "type": "wolf", "pos": [35.0, 0.0, 8.0], "level": 2, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [38.0, 0.0, 14.0], "level": 2, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [45.0, 0.0, 10.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [48.0, 0.0, -6.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [62.0, 0.0, -2.0], "level": 4, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [66.0, 0.0, -8.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [58.0, 0.0, 4.0], "level": 2, "stance": "violent", "isBoss": false },
+
+  { "type": "goblin", "pos": [-12.0, 0.0, -35.0], "level": 2, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [12.0, 0.0, -35.0], "level": 2, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [-18.0, 0.0, -48.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [18.0, 0.0, -48.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [0.0, 0.0, -55.0], "level": 4, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [-8.0, 0.0, -60.0], "level": 3, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [8.0, 0.0, -60.0], "level": 3, "stance": "violent", "isBoss": false },
+
+  { "type": "goblin", "pos": [-10.0, 0.0, 48.0], "level": 4, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [10.0, 0.0, 48.0], "level": 4, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [0.0, 0.0, 56.0], "level": 4, "stance": "violent", "isBoss": false },
+
+  { "type": "dragon_boss", "pos": [0.0, 0.0, 78.0], "level": 10, "stance": "violent", "isBoss": true },
+  { "type": "wolf", "pos": [-8.0, 0.0, 74.0], "level": 5, "stance": "violent", "isBoss": false },
+  { "type": "wolf", "pos": [8.0, 0.0, 74.0], "level": 5, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [-6.0, 0.0, 84.0], "level": 4, "stance": "violent", "isBoss": false },
+  { "type": "goblin", "pos": [6.0, 0.0, 84.0], "level": 4, "stance": "violent", "isBoss": false }
 ]

@@ -20,10 +20,16 @@ class RespawnTicket extends RefCounted:
 @export var max_respawns_per_frame: int = 5
 
 # Distancias de Histeresis para Logic Culling (Sección 5.2)
-const WAKE_RADIUS: float = 35.0
-const SLEEP_RADIUS: float = 45.0
+const WAKE_RADIUS: float = 65.0
+const SLEEP_RADIUS: float = 85.0
 
 const MobScript = preload("res://scripts/gameplay/enemies/mob.gd")
+
+const DEFAULT_SCENES: Dictionary = {
+	"goblin": preload("res://scenes/enemies/mob_goblin.tscn"),
+	"wolf": preload("res://scenes/enemies/mob_wolf.tscn"),
+	"dragon_boss": preload("res://scenes/enemies/mob_dragon_boss.tscn")
+}
 
 # Almacenes de Object Pooling y Entidades Activas
 var _blueprints: Dictionary = {} # type -> MobBlueprint
@@ -48,7 +54,6 @@ func _load_initial_spawns() -> void:
 			if spawn_entry is Dictionary:
 				spawn_mob_from_entry(spawn_entry)
 
-## Genera un mob en el mundo a partir de un descriptor de spawn
 ## Genera un mob en el mundo a partir de un descriptor de spawn
 func spawn_mob_from_entry(entry: Dictionary) -> CharacterBody3D:
 	var bp_type: String = str(entry.get("type", "goblin"))
@@ -77,7 +82,10 @@ func spawn_mob(bp_type: String, pos: Vector3, level: int = -1, is_boss: bool = f
 		mob.reset(pos, fade_in, level)
 	else:
 		# 2. Instanciación fresca si no hay instancias en el pool
-		if mob_scene != null:
+		var selected_scene: PackedScene = DEFAULT_SCENES.get(bp_type, mob_scene)
+		if selected_scene != null:
+			mob = selected_scene.instantiate() as CharacterBody3D
+		elif mob_scene != null:
 			mob = mob_scene.instantiate() as CharacterBody3D
 		else:
 			mob = MobScript.new() as CharacterBody3D
