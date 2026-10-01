@@ -81,10 +81,12 @@ func play_attack(custom_speed_scale: float = 1.0) -> void:
 		return
 	is_attacking_anim = true
 	anim_player.speed_scale = custom_speed_scale
-	anim_player.stop()
-	# Adaptar el tiempo de mezcla para ataques rápidos para no recortar el inicio del golpe
-	var blend_time: float = clampf(0.08 / custom_speed_scale, 0.01, ANIM_BLEND_TIME)
-	anim_player.play(_anim_attack, blend_time)
+	if anim_player.current_animation == _anim_attack and anim_player.is_playing():
+		anim_player.seek(0.0, true)
+	else:
+		# Adaptar el tiempo de mezcla para ataques rápidos para no recortar el inicio del golpe
+		var blend_time: float = clampf(0.08 / custom_speed_scale, 0.01, ANIM_BLEND_TIME)
+		anim_player.play(_anim_attack, blend_time)
 
 ## Retorna si se encuentra reproduciendo activamente una animación de ataque
 func is_playing_attack() -> bool:

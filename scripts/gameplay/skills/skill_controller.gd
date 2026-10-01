@@ -153,6 +153,11 @@ func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 		skill_cast_failed.emit("En enfriamiento")
 		return false
 
+	# 1b. Si ya se está ejecutando activamente un ataque previo, ignorar pulsaciones rápidas repetidas
+	var visuals: Node = _parent_body.get_node_or_null("Visuals") if _parent_body else null
+	if visuals and visuals.has_method("is_playing_attack") and visuals.is_playing_attack():
+		return false
+
 	# 2. Si no se pasó objetivo explícito, tomar el objetivo actual de combate
 	var combat_ctrl: Node = _parent_body.get_node_or_null("CombatController") if _parent_body else null
 	if target == null and combat_ctrl and "current_target" in combat_ctrl:
@@ -163,9 +168,12 @@ func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 		skill_cast_failed.emit("Sin objetivo seleccionado")
 		return false
 
-	# 4. Comprobación de Rango
+	# 4. Comprobación de Rango considerando tamaño del objetivo
 	var dist := _parent_body.global_position.distance_to(target.global_position)
-	if dist > skill.range_distance:
+	var max_range := skill.range_distance
+	if combat_ctrl and combat_ctrl.has_method("get_effective_attack_range"):
+		max_range = maxf(max_range, combat_ctrl.get_effective_attack_range(target))
+	if dist > max_range:
 		skill_cast_failed.emit("Objetivo fuera de alcance")
 		return false
 

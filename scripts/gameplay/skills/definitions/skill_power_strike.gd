@@ -73,8 +73,13 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 		caster_ct.enter_combat(target)
 
 	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
-	if combat_ctrl and combat_ctrl.has_method("reset_attack_timer"):
-		combat_ctrl.reset_attack_timer()
+	if combat_ctrl:
+		if combat_ctrl.has_method("reset_attack_timer"):
+			combat_ctrl.reset_attack_timer()
+		if "current_target" in combat_ctrl and combat_ctrl.current_target == null:
+			combat_ctrl.current_target = target
+		if "state" in combat_ctrl and combat_ctrl.state == CombatController.State.IDLE:
+			combat_ctrl.state = CombatController.State.ATTACKING
 
 	# 6. Sincronización del impacto con la caída de la espada
 	var base_delay: float = float(GameConfig.get_combat_value("combat", "impact_delay", BASE_IMPACT_DELAY))
@@ -95,6 +100,11 @@ func _apply_delayed_strike(caster: Node3D, target: Node3D, caster_stats: Charact
 		return
 	if target == null or not is_instance_valid(target):
 		return
+
+	# Resetear timer de autoataque al impacto para que el siguiente básico no entre inmediatamente pegado
+	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
+	if combat_ctrl and combat_ctrl.has_method("reset_attack_timer"):
+		combat_ctrl.reset_attack_timer()
 
 	var target_ct := target.get_node_or_null("CombatTarget") as CombatTarget
 	if target_ct == null or target_ct.current_health <= 0.0:

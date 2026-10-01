@@ -138,6 +138,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 		if slot_to_activate >= 0:
 			slot_activated.emit(slot_to_activate)
+			get_viewport().set_input_as_handled()
 
 func _setup_default_slots() -> void:
 	# Iconos y atajos por defecto de las acciones principales
