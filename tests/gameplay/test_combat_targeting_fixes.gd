@@ -46,19 +46,20 @@ func _run_tests() -> void:
 	# --------------------------------------------------------------------------
 	# PRUEBA 2: Aproximación y Detección de Rango sin Bloqueo Físico (Bug 3)
 	# --------------------------------------------------------------------------
-	# Crear atacante a 2.6m del Dragón (donde antes se atascaba porque 2.6 > 1.8)
+	# Crear atacante a 6.0m del Dragón para verificar aproximación (fuera de rango)
 	var attacker := CharacterBody3D.new()
 	attacker.name = "Attacker"
 	attacker.position = Vector3(0.0, 0.0, 0.0)
-	dragon.position = Vector3(2.6, 0.0, 0.0) # Distancia 2.6m
+	dragon.position = Vector3(6.0, 0.0, 0.0) # Distancia 6.0m (> 4.0m de rango)
 	root.add_child(attacker)
 
 	combat_ctrl.reparent(attacker)
 	await process_frame
 	combat_ctrl.attack_target(dragon)
-	assert(combat_ctrl.state == CombatController.State.APPROACHING, "Debe iniciar en APPROACHING")
+	assert(combat_ctrl.state == CombatController.State.APPROACHING, "Debe iniciar en APPROACHING cuando está fuera de rango")
 
-	# Actualizar combate: a 2.6m, al ser Dragón con radio ~1.4m, attack_range es ~3.2m -> debe entrar en ATTACKING!
+	# Acercar a 2.6m (dentro del rango extendido del Dragón de 4.0m) y verificar que entra a ATTACKING
+	dragon.position = Vector3(2.6, 0.0, 0.0)
 	combat_ctrl.update_combat(0.05, null)
 	assert(combat_ctrl.state == CombatController.State.ATTACKING, "A 2.6m contra el Dragón debe entrar en ATTACKING sin necesidad de pegarse a su centro")
 	print("[OK] Prueba 2: Entrada exitosa en estado ATTACKING frente al Dragón a distancia física segura (2.6m).")

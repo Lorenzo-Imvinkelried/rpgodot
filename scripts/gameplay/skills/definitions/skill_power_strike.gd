@@ -23,10 +23,10 @@ func _init() -> void:
 
 	flat_damage = 30.0
 	damage_multiplier = 1.55 # 55% más de daño que el básico estándar
-	anim_speed_multiplier = 1.45 # Velocidad de ataque acelerada respecto a la cadencia actual
+	anim_speed_multiplier = 1.70 # Multiplicador exacto de 1.70x (70% más rápido que el básico según RPGARENA)
 	threat_multiplier = 1.6 # Mayor generación de amenaza
 
-## Ejecución con animación acelerada e impacto sincronizado con la caída de la espada
+## Ejecución con animación acelerada (1.70x), AA-Reset, Lunge procedural e impacto sincronizado
 func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree: SceneTree = null) -> Dictionary:
 	if caster == null or target == null or not is_instance_valid(target):
 		return { "success": false }
@@ -44,7 +44,7 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	if diff.length_squared() > 0.001:
 		caster.look_at(caster.global_position + diff.normalized(), Vector3.UP)
 
-	# 3. Calcular la velocidad de ataque acelerada tomando como base la velocidad actual del jugador
+	# 3. Calcular la velocidad de ataque acelerada con multiplicador 1.70x (PowerStrike.h)
 	var current_atk_spd: float = 1.4
 	if caster_stats != null:
 		current_atk_spd = caster_stats.attack_speed
@@ -60,28 +60,39 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	else:
 		base_anim_scale = current_atk_spd
 
-	# Escala de velocidad final acelerada (más rápida que el golpe básico normal)
-	var skill_speed_scale: float = maxf(1.5, base_anim_scale * anim_speed_multiplier)
+	# Escala de velocidad final acelerada un 70% más rápida que el golpe básico normal
+	var skill_speed_scale: float = maxf(1.70, base_anim_scale * anim_speed_multiplier)
 
-	# 4. Reproducir la animación de golpe acelerada
+	# 4. [ANIMATION CANCELLING & AA-RESET]: Forzar reproducción inmediata desde el frame 0
 	if visuals and visuals.has_method("play_attack"):
-		visuals.play_attack(skill_speed_scale)
+		visuals.play_attack(skill_speed_scale, true)
 
-	# 5. Entrada en estado de combate del lanzador y sincronización con CombatController
+	# 5. [LUNGE PROCEDURAL]: Impulso cinético hacia adelante hacia el objetivo
+	if caster.has_method("apply_lunge"):
+		caster.apply_lunge(diff, 6.5, 0.14)
+	elif caster is CharacterBody3D and diff.length_squared() > 0.001:
+		caster.velocity += diff.normalized() * 5.0
+
+	# 6. Entrada en estado de combate del lanzador y cancelación del auto-ataque previo en CombatController
 	var caster_ct := caster.get_node_or_null("CombatTarget") as CombatTarget
 	if caster_ct:
 		caster_ct.enter_combat(target)
 
 	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
 	if combat_ctrl:
-		if combat_ctrl.has_method("reset_attack_timer"):
+		# Si estaba en Windup, cancel_pending_attack cancela el impacto previo;
+		# si estaba en Recovery, cancela el backswing y resetea el timer.
+		if combat_ctrl.has_method("cancel_pending_attack"):
+			combat_ctrl.cancel_pending_attack()
+		elif combat_ctrl.has_method("reset_attack_timer"):
 			combat_ctrl.reset_attack_timer()
+
 		if "current_target" in combat_ctrl and combat_ctrl.current_target == null:
 			combat_ctrl.current_target = target
 		if "state" in combat_ctrl and combat_ctrl.state == CombatController.State.IDLE:
 			combat_ctrl.state = CombatController.State.ATTACKING
 
-	# 6. Sincronización del impacto con la caída de la espada
+	# 7. Sincronización del impacto con la caída acelerada de la espada
 	var base_delay: float = float(GameConfig.get_combat_value("combat", "impact_delay", BASE_IMPACT_DELAY))
 	var real_delay: float = base_delay / skill_speed_scale
 
@@ -101,10 +112,15 @@ func _apply_delayed_strike(caster: Node3D, target: Node3D, caster_stats: Charact
 	if target == null or not is_instance_valid(target):
 		return
 
-	# Resetear timer de autoataque al impacto para que el siguiente básico no entre inmediatamente pegado
+	# Resetear timer de autoataque al impacto para que el siguiente básico empiece su cadencia desde este momento
 	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
 	if combat_ctrl and combat_ctrl.has_method("reset_attack_timer"):
 		combat_ctrl.reset_attack_timer()
+
+	# Hit-Stop pronunciado (0.045s) en el momento del impacto
+	var visuals: Node = caster.get_node_or_null("Visuals")
+	if visuals and visuals.has_method("trigger_hit_stop"):
+		visuals.trigger_hit_stop(0.045)
 
 	var target_ct := target.get_node_or_null("CombatTarget") as CombatTarget
 	if target_ct == null or target_ct.current_health <= 0.0:

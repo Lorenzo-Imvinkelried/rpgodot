@@ -70,6 +70,11 @@ func _run_tests() -> void:
 	skill_ctrl.name = "SkillController"
 	player.add_child(skill_ctrl)
 
+	var combat_ctrl := CombatController.new()
+	combat_ctrl.name = "CombatController"
+	combat_ctrl.stats = p_stats
+	player.add_child(combat_ctrl)
+
 	var dummy := CharacterBody3D.new()
 	dummy.name = "TargetDummy"
 	dummy.position = Vector3(2.0, 0.0, 0.0) # En rango melee

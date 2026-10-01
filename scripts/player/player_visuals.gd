@@ -28,6 +28,8 @@ var _anim_walk: String = ""
 var _anim_attack: String = ""
 var _natural_walk_speed: float = 4.0
 var is_attacking_anim: bool = false
+var _is_in_hit_stop: bool = false
+var _pre_hit_stop_speed: float = 1.0
 
 func _ready() -> void:
 	_setup_anim_player()
@@ -76,17 +78,42 @@ func get_attack_speed_scale(attacks_per_second: float) -> float:
 	return maxf(1.0, anim_length * attacks_per_second)
 
 ## Reproduce la animación de ataque / golpe ajustada a la velocidad de ataque.
-func play_attack(custom_speed_scale: float = 1.0) -> void:
+## Permite reiniciar forzosamente desde el frame 0 para cancelación de animaciones (AA-Reset).
+func play_attack(custom_speed_scale: float = 1.0, force_restart: bool = false) -> void:
 	if anim_player == null or _anim_attack == "":
 		return
+	cancel_hit_stop()
 	is_attacking_anim = true
 	anim_player.speed_scale = custom_speed_scale
-	if anim_player.current_animation == _anim_attack and anim_player.is_playing():
+	if force_restart or (anim_player.current_animation == _anim_attack and anim_player.is_playing()):
 		anim_player.seek(0.0, true)
 	else:
 		# Adaptar el tiempo de mezcla para ataques rápidos para no recortar el inicio del golpe
 		var blend_time: float = clampf(0.08 / custom_speed_scale, 0.01, ANIM_BLEND_TIME)
 		anim_player.play(_anim_attack, blend_time)
+
+## Congela momentáneamente la animación de impacto (Hit-Stop / freeze frame) para sensación de impacto contundente.
+func trigger_hit_stop(duration: float = 0.045) -> void:
+	if anim_player == null or not is_inside_tree() or duration <= 0.0:
+		return
+	if not _is_in_hit_stop:
+		_pre_hit_stop_speed = anim_player.speed_scale
+		_is_in_hit_stop = true
+	anim_player.speed_scale = 0.0
+
+	var tree := get_tree()
+	if tree:
+		tree.create_timer(duration, true, false, true).timeout.connect(func():
+			if _is_in_hit_stop and anim_player != null:
+				anim_player.speed_scale = _pre_hit_stop_speed
+				_is_in_hit_stop = false
+		)
+
+## Cancela el estado de hit-stop y restablece la velocidad de animación previa.
+func cancel_hit_stop() -> void:
+	if _is_in_hit_stop and anim_player != null:
+		anim_player.speed_scale = _pre_hit_stop_speed
+		_is_in_hit_stop = false
 
 ## Retorna si se encuentra reproduciendo activamente una animación de ataque
 func is_playing_attack() -> bool:

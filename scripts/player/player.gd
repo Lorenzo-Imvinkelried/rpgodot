@@ -31,6 +31,8 @@ var _dash_timer: float = 0.0
 var _dash_cooldown_timer: float = 0.0
 var _dash_velocity: Vector3 = Vector3.ZERO
 var _was_space_pressed: bool = false
+var _lunge_velocity: Vector3 = Vector3.ZERO
+var _lunge_timer: float = 0.0
 
 # Variables y componentes de Click-to-Move (desplazamiento guiado por ratón) y targeting
 var _ground_marker: Node3D = null
@@ -354,6 +356,15 @@ func _process_movement(delta: float) -> void:
 		move_and_slide()
 		return
 
+	# Impulso cinético de habilidad (Lunge procedural)
+	if _lunge_timer > 0.0:
+		_lunge_timer -= delta
+		velocity.x = _lunge_velocity.x
+		velocity.z = _lunge_velocity.z
+		is_moving = true
+		move_and_slide()
+		return
+
 	# Cancelar combate automático y click-to-move si el jugador presiona manualmente cualquier tecla de movimiento
 	var has_manual_input := (turn_input != 0.0 or forward_input != 0.0)
 	if has_manual_input:
@@ -456,3 +467,10 @@ func _process_movement(delta: float) -> void:
 	is_moving = forward_input != 0.0
 
 	move_and_slide()
+
+## Aplica un impulso cinético hacia una dirección (lunge de habilidad / ataque)
+func apply_lunge(direction: Vector3, speed: float = 6.5, duration: float = 0.14) -> void:
+	var dir_flat := Vector3(direction.x, 0.0, direction.z)
+	if dir_flat.length_squared() > 0.001:
+		_lunge_velocity = dir_flat.normalized() * speed
+		_lunge_timer = duration

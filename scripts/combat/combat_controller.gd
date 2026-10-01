@@ -305,6 +305,11 @@ func update_combat(delta: float, visuals: PlayerVisuals) -> void:
 				_time_since_last_attack = 0.0
 				_execute_attack(visuals, atk_speed)
 
+## Cancela cualquier impacto pendiente del auto-ataque (Windup Cancel) y resetea temporizadores (AA-Reset).
+func cancel_pending_attack() -> void:
+	_pending_impacts.clear()
+	_time_since_last_attack = 0.0
+
 ## Reinicia el temporizador de cadencia del ataque básico (usado por habilidades o reinicios de ataque)
 func reset_attack_timer() -> void:
 	_time_since_last_attack = 0.0
@@ -430,6 +435,12 @@ func _apply_impact(target: Node3D, hit_index: int = 0, allow_true_damage: bool =
 		result.true_damage = maxi(0, int(round(float(result.true_damage) * damage_scale)))
 
 	_broadcast_combat_result(hit_pos, target_path, result)
+
+	# Hit-Stop en el atacante para el impacto principal
+	if hit_index == 0 and _parent_body:
+		var visuals := _parent_body.get_node_or_null("Visuals") as PlayerVisuals
+		if visuals and visuals.has_method("trigger_hit_stop"):
+			visuals.trigger_hit_stop(0.04)
 
 	# Si el objetivo murió a raíz de este impacto, detener el combate de inmediato
 	if not is_target_alive(target):
