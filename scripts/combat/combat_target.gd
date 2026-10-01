@@ -11,6 +11,9 @@ signal died()
 signal invulnerability_started(duration: float)
 signal invulnerability_ended()
 signal guard_changed(is_guarding: bool)
+signal combat_entered(instigator: Node)
+signal combat_exited()
+signal combat_state_changed(in_combat: bool)
 
 const DAMAGE_NUMBER_FX_SCENE = preload("res://scenes/combat/damage_number_fx.tscn")
 const StatusEffectControllerScript = preload("res://scripts/combat/status_effect_controller.gd")
@@ -18,6 +21,7 @@ const StatusEffectControllerScript = preload("res://scripts/combat/status_effect
 @export var target_name: String = "Objetivo"
 @export var max_health: float = 100.0
 @export var spawn_damage_numbers: bool = true
+@export var combat_timeout: float = 5.0
 @export var stats: CharacterStats = null:
 	set(val):
 		stats = val
@@ -27,6 +31,10 @@ const StatusEffectControllerScript = preload("res://scripts/combat/status_effect
 
 var current_health: float = 100.0
 var last_attacker: Node = null
+
+# --- Estado de Combate (In-Combat / Out-of-Combat) ---
+var is_in_combat: bool = false
+var combat_timer: float = 0.0
 
 # --- Mecánicas Defensivas Activas (I-Frames / Guardia) ---
 var is_invulnerable: bool = false
@@ -55,6 +63,28 @@ func trigger_invulnerability(duration: float = 0.20) -> void:
 	_invulnerability_timer = duration
 	invulnerability_started.emit(duration)
 
+## Activa o renueva el estado en combate ante una acción hostil
+func enter_combat(instigator: Node = null) -> void:
+	combat_timer = combat_timeout
+	if not is_in_combat:
+		is_in_combat = true
+		combat_entered.emit(instigator)
+		combat_state_changed.emit(true)
+
+## Finaliza el estado en combate tras expirar el temporizador o al morir
+func exit_combat() -> void:
+	if is_in_combat:
+		is_in_combat = false
+		combat_timer = 0.0
+		combat_exited.emit()
+		combat_state_changed.emit(false)
+
+## Refresca la duración del estado en combate
+func refresh_combat(duration: float = -1.0) -> void:
+	combat_timer = combat_timeout if duration <= 0.0 else duration
+	if not is_in_combat:
+		enter_combat()
+
 func _process(delta: float) -> void:
 	if _invulnerability_timer > 0.0:
 		_invulnerability_timer -= delta
@@ -62,6 +92,11 @@ func _process(delta: float) -> void:
 			_invulnerability_timer = 0.0
 			is_invulnerable = false
 			invulnerability_ended.emit()
+
+	if is_in_combat:
+		combat_timer -= delta
+		if combat_timer <= 0.0:
+			exit_combat()
 
 func _enter_tree() -> void:
 	_init_stats()
@@ -121,6 +156,12 @@ func take_combat_result(result: DamageResult, hit_position: Vector3, attacker: N
 
 	hit_received.emit(dmg, hit_position, attacker)
 	health_changed.emit(current_health, max_health)
+
+	enter_combat(attacker)
+	if attacker != null:
+		var atk_tgt := _find_combat_target(attacker)
+		if atk_tgt:
+			atk_tgt.enter_combat(get_parent())
 
 	if spawn_damage_numbers and dmg > 0.0:
 		_spawn_damage_number(dmg, hit_position, result.is_crit, result.is_blocked, false, false, result.is_thorns, result.is_bleed)
@@ -189,6 +230,7 @@ func take_combat_result(result: DamageResult, hit_position: Vector3, attacker: N
 
 	if prev_hp > 0.0 and current_health <= 0.0:
 		died.emit()
+		exit_combat()
 
 ## Registra un impacto plano recibido (mantenido por compatibilidad).
 func take_hit(damage: float, hit_position: Vector3, attacker: Node) -> void:
@@ -201,6 +243,7 @@ func take_hit(damage: float, hit_position: Vector3, attacker: Node) -> void:
 
 ## Restaura la salud al valor máximo y notifica el cambio.
 func reset_health() -> void:
+	exit_combat()
 	if stats:
 		stats.recalculate_stats(true)
 		max_health = float(stats.max_hp)

@@ -74,6 +74,7 @@ func _ready() -> void:
 	if combat_target:
 		combat_target.health_changed.connect(_on_health_changed)
 		combat_target.guard_changed.connect(_on_guard_changed)
+		combat_target.combat_state_changed.connect(_on_combat_state_changed)
 		if not combat_target.target_name.is_empty() and _base_entity_name.is_empty():
 			set_entity_name(combat_target.target_name)
 		set_health(combat_target.current_health, combat_target.max_health, false)
@@ -227,13 +228,17 @@ func _process(_delta: float) -> void:
 func _update_auto_hide() -> void:
 	if not auto_hide_when_full:
 		return
-	var is_full := _current_health >= _max_health
+	var is_in_comb := (combat_target != null and combat_target.is_in_combat)
+	var is_full := (_current_health >= _max_health) and not is_in_comb
 	var target_alpha := 0.0 if is_full else 1.0
 	var tween := create_tween()
 	if _ui_container != null and is_instance_valid(_ui_container):
 		tween.tween_property(_ui_container, "modulate:a", target_alpha, 0.2)
 	elif sprite_3d != null:
 		tween.tween_property(sprite_3d, "modulate:a", target_alpha, 0.2)
+
+func _on_combat_state_changed(_in_combat: bool) -> void:
+	_update_auto_hide()
 
 static func _set_mouse_filter_recursive(node: Node) -> void:
 	if node is Control:

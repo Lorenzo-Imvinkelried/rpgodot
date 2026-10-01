@@ -1,17 +1,24 @@
 class_name SkillController
 extends Node
 
-## Responsabilidad: Coordinación de lanzamiento de habilidades activas, validación de maná,
-## rangos, enfriamientos, canalización en CastBar y aplicación de daño al objetivo.
+## Responsabilidad: Orquestador y despachador de habilidades activas del jugador o entidad.
+## Carga definiciones modulares de habilidades (definitions/), administra cooldowns,
+## valida rangos y maná, coordina casteo con CastBar y ejecuta la lógica polimórfica de cada skill.
 
 signal skill_cast_started(skill: RefCounted, target: Node3D)
 signal skill_cast_finished(skill: RefCounted, target: Node3D)
 signal skill_cast_failed(reason: String)
 
-const SkillDataScript = preload("res://scripts/gameplay/skills/skill_data.gd")
-const CombatCalculatorScript = preload("res://scripts/combat/combat_calculator.gd")
+const SkillPowerStrikeScript = preload("res://scripts/gameplay/skills/definitions/skill_power_strike.gd")
+const SkillLightningScript = preload("res://scripts/gameplay/skills/definitions/skill_lightning.gd")
+const SkillFireballScript = preload("res://scripts/gameplay/skills/definitions/skill_fireball.gd")
+const SkillFrostScript = preload("res://scripts/gameplay/skills/definitions/skill_frost.gd")
+const SkillSunRayScript = preload("res://scripts/gameplay/skills/definitions/skill_sun_ray.gd")
+const SkillMeteorScript = preload("res://scripts/gameplay/skills/definitions/skill_meteor.gd")
+const SkillWhirlwindScript = preload("res://scripts/gameplay/skills/definitions/skill_whirlwind.gd")
+const SkillBloodySlashScript = preload("res://scripts/gameplay/skills/definitions/skill_bloody_slash.gd")
 
-var _skills: Dictionary = {} # slot_index (int) -> SkillData
+var _skills: Dictionary = {} # slot_index (int) -> BaseSkill
 var _cooldowns: Dictionary = {} # slot_index -> float remaining
 var _pending_cast_slot: int = -1
 var _pending_cast_target: Node3D = null
@@ -30,20 +37,36 @@ func _process(delta: float) -> void:
 			_cooldowns.erase(slot)
 
 func _setup_default_skills() -> void:
-	# Slot 3 (Key 4)
-	_skills[3] = SkillDataScript.create("relampago", "Relámpago", "⚡", "4", 15, 3.0, 0.0, 45.0, 18.0)
-	# Slot 4 (Key 5)
-	_skills[4] = SkillDataScript.create("fuego", "Bola de Fuego", "🔥", "5", 25, 4.5, 1.0, 75.0, 18.0)
-	# Slot 5 (Key 6)
-	_skills[5] = SkillDataScript.create("escarcha", "Escarcha", "❄", "6", 20, 5.0, 0.0, 40.0, 16.0, false, "slow", 3.0, 35.0)
-	# Slot 6 (Key 7)
-	_skills[6] = SkillDataScript.create("rayo_solar", "Rayo Solar", "✨", "7", 30, 6.0, 1.2, 90.0, 20.0)
-	# Slot 7 (Key 8)
-	_skills[7] = SkillDataScript.create("meteorito", "Meteorito", "☄", "8", 45, 8.0, 1.5, 130.0, 20.0)
-	# Slot 8 (Key 9)
-	_skills[8] = SkillDataScript.create("torbellino", "Torbellino", "🌪", "9", 25, 5.0, 0.0, 55.0, 6.0, true)
-	# Slot 9 (Key 0)
-	_skills[9] = SkillDataScript.create("sangrado", "Tajo Sangriento", "🩸", "0", 20, 4.0, 0.0, 50.0, 15.0, false, "bleed", 4.0, 10.0)
+	# Slot 0 (Key 1): Skill 1 - Golpe Potente (básico más fuerte y rápido)
+	_skills[0] = SkillPowerStrikeScript.new()
+	# Slot 3 (Key 4): Relámpago
+	_skills[3] = SkillLightningScript.new()
+	# Slot 4 (Key 5): Bola de Fuego
+	_skills[4] = SkillFireballScript.new()
+	# Slot 5 (Key 6): Escarcha
+	_skills[5] = SkillFrostScript.new()
+	# Slot 6 (Key 7): Rayo Solar
+	_skills[6] = SkillSunRayScript.new()
+	# Slot 7 (Key 8): Meteorito
+	_skills[7] = SkillMeteorScript.new()
+	# Slot 8 (Key 9): Torbellino
+	_skills[8] = SkillWhirlwindScript.new()
+	# Slot 9 (Key 0): Tajo Sangriento
+	_skills[9] = SkillBloodySlashScript.new()
+
+## Registra o reemplaza una habilidad en un slot específico
+func register_skill(slot_idx: int, skill: BaseSkill) -> void:
+	if skill != null:
+		skill.slot_index = slot_idx
+		_skills[slot_idx] = skill
+
+## Retorna la habilidad asignada a un slot específico
+func get_skill(slot_idx: int) -> BaseSkill:
+	return _skills.get(slot_idx, null)
+
+## Retorna el diccionario completo de habilidades registradas
+func get_all_skills() -> Dictionary:
+	return _skills
 
 ## Activa la acción o habilidad asociada al slot dado (0-11)
 func activate_slot(slot_idx: int, target: Node3D = null, cast_bar: Control = null, hotbar: Control = null) -> bool:
@@ -56,11 +79,9 @@ func activate_slot(slot_idx: int, target: Node3D = null, cast_bar: Control = nul
 		skill_cast_failed.emit("Aturdido")
 		return false
 
-	# 2. Slot 0: Ataque básico
+	# 2. Slot 0: Skill 1 (Golpe Potente - básico más fuerte y veloz)
 	if slot_idx == 0:
-		if _parent_body and _parent_body.has_method("attack_target"):
-			_parent_body.attack_target(target)
-		return true
+		return _activate_skill_1(target, hotbar)
 
 	# 3. Slot 1: Dash (espacio)
 	if slot_idx == 1:
@@ -85,34 +106,23 @@ func activate_slot(slot_idx: int, target: Node3D = null, cast_bar: Control = nul
 	if not _skills.has(slot_idx):
 		return false
 
-	var skill: RefCounted = _skills[slot_idx]
+	var skill: BaseSkill = _skills[slot_idx]
 
 	# Enfriamiento
 	if _cooldowns.has(slot_idx) and _cooldowns[slot_idx] > 0.0:
 		skill_cast_failed.emit("En enfriamiento")
 		return false
 
-	# Maná suficiente
+	# Validación de condiciones (maná, rango, objetivo)
 	var caster_ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget if _parent_body else null
 	var caster_stats: CharacterStats = caster_ct.get_stats() if caster_ct else null
-	if caster_stats:
-		if caster_stats.current_mp < skill.mana_cost:
-			skill_cast_failed.emit("Maná insuficiente")
-			return false
 
-	# Validación de objetivo
-	if not skill.is_aoe:
-		if target == null or not is_instance_valid(target):
-			skill_cast_failed.emit("Sin objetivo seleccionado")
-			return false
+	var check_result: Dictionary = skill.can_cast(_parent_body, target, caster_stats)
+	if not check_result.get("ok", false):
+		skill_cast_failed.emit(check_result.get("reason", "Lanzamiento inválido"))
+		return false
 
-		# Rango
-		var dist := _parent_body.global_position.distance_to(target.global_position)
-		if dist > skill.range_distance:
-			skill_cast_failed.emit("Objetivo fuera de alcance")
-			return false
-
-	# Canalización con CastBar
+	# Canalización con CastBar si la habilidad tiene tiempo de casteo
 	if skill.cast_time > 0.0 and cast_bar != null:
 		_pending_cast_slot = slot_idx
 		_pending_cast_target = target
@@ -132,10 +142,53 @@ func activate_slot(slot_idx: int, target: Node3D = null, cast_bar: Control = nul
 	_execute_skill(skill, slot_idx, target, hotbar)
 	return true
 
+## Maneja la ejecución de la Skill 1 (Golpe Potente)
+func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
+	var skill: BaseSkill = _skills.get(0, null)
+	if skill == null:
+		if _parent_body and _parent_body.has_method("attack_target"):
+			_parent_body.attack_target(target)
+		return true
+
+	# Si no se pasó objetivo explícito, tomar el objetivo actual de combate
+	var combat_ctrl: Node = _parent_body.get_node_or_null("CombatController") if _parent_body else null
+	if target == null and combat_ctrl and "current_target" in combat_ctrl:
+		target = combat_ctrl.current_target
+
+	# Si no hay objetivo, delegar aproximación al controller
+	if target == null:
+		if _parent_body and _parent_body.has_method("attack_target"):
+			_parent_body.attack_target(null)
+		return true
+
+	# Si está fuera de alcance melee, aproximar
+	var dist := _parent_body.global_position.distance_to(target.global_position)
+	if dist > skill.range_distance:
+		if _parent_body and _parent_body.has_method("attack_target"):
+			_parent_body.attack_target(target)
+		return true
+
+	# Si está en enfriamiento, ejecutar golpe básico ordinario de autoataque
+	if _cooldowns.has(0) and _cooldowns[0] > 0.0:
+		if _parent_body and _parent_body.has_method("attack_target"):
+			_parent_body.attack_target(target)
+		return true
+
+	# Validar maná
+	var caster_ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget if _parent_body else null
+	var caster_stats: CharacterStats = caster_ct.get_stats() if caster_ct else null
+	if caster_stats and caster_stats.current_mp < skill.mana_cost:
+		if _parent_body and _parent_body.has_method("attack_target"):
+			_parent_body.attack_target(target)
+		return true
+
+	_execute_skill(skill, 0, target, hotbar)
+	return true
+
 func _on_cast_bar_completed(_skill_name: String) -> void:
 	if _pending_cast_slot < 0 or not _skills.has(_pending_cast_slot):
 		return
-	var skill: RefCounted = _skills[_pending_cast_slot]
+	var skill: BaseSkill = _skills[_pending_cast_slot]
 	_execute_skill(skill, _pending_cast_slot, _pending_cast_target, _pending_hotbar)
 	_pending_cast_slot = -1
 	_pending_cast_target = null
@@ -146,76 +199,23 @@ func _on_cast_bar_interrupted(_skill_name: String) -> void:
 	_pending_cast_target = null
 	_pending_hotbar = null
 
-func _execute_skill(skill: RefCounted, slot_idx: int, target: Node3D, hotbar: Control = null) -> void:
+func _execute_skill(skill: BaseSkill, slot_idx: int, target: Node3D, hotbar: Control = null) -> void:
 	if _parent_body == null:
 		return
 
 	var caster_ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget
 	var caster_stats: CharacterStats = caster_ct.get_stats() if caster_ct else null
 
-	# Deducción de maná
-	if caster_stats and skill.mana_cost > 0:
-		caster_stats.current_mp = maxi(0, caster_stats.current_mp - skill.mana_cost)
-
 	# Registrar cooldown
-	_cooldowns[slot_idx] = skill.cooldown
-	if hotbar and hotbar.has_method("trigger_cooldown"):
-		hotbar.trigger_cooldown(slot_idx, skill.cooldown)
+	if skill.cooldown > 0.0:
+		_cooldowns[slot_idx] = skill.cooldown
+		if hotbar and hotbar.has_method("trigger_cooldown"):
+			hotbar.trigger_cooldown(slot_idx, skill.cooldown)
 
-	# Animación visual del lanzador
-	var visuals: Node = _parent_body.get_node_or_null("Visuals") if _parent_body else null
-	if visuals and visuals.has_method("play_attack"):
-		visuals.play_attack(1.2)
-
-	# Aplicar daño al objetivo o área
-	if skill.is_aoe:
-		_execute_aoe_damage(skill, caster_stats)
-	else:
-		_execute_single_target_damage(skill, caster_stats, target)
+	# Delegar ejecución lógica y efectos a la instancia polimórfica de la skill
+	skill.execute(_parent_body, target, caster_stats, get_tree())
 
 	skill_cast_finished.emit(skill, target)
-
-func _execute_single_target_damage(skill: RefCounted, caster_stats: CharacterStats, target: Node3D) -> void:
-	if not is_instance_valid(target):
-		return
-
-	var target_ct := target.get_node_or_null("CombatTarget") as CombatTarget
-	if target_ct == null:
-		return
-
-	var target_stats := target_ct.get_stats()
-	var dmg_result := CombatCalculatorScript.calculate_skill_damage(caster_stats, target_stats, skill.flat_damage)
-
-	var hit_pos := target.global_position + Vector3(0.0, 1.0, 0.0)
-	target_ct.take_combat_result(dmg_result, hit_pos, _parent_body)
-
-	# Efectos de estado
-	if skill.effect_type != "":
-		var target_status := target.get_node_or_null("StatusEffectController")
-		if target_status:
-			if skill.effect_type == "slow" and target_status.has_method("apply_slow"):
-				target_status.apply_slow(skill.effect_value, skill.effect_duration)
-			elif skill.effect_type == "bleed" and target_status.has_method("apply_bleed"):
-				target_status.apply_bleed(int(skill.effect_value), skill.effect_duration)
-			elif skill.effect_type == "stun" and target_status.has_method("apply_stun"):
-				target_status.apply_stun(skill.effect_duration)
-
-func _execute_aoe_damage(skill: RefCounted, caster_stats: CharacterStats) -> void:
-	var tree := _parent_body.get_tree()
-	if tree == null:
-		return
-
-	var targets := tree.get_nodes_in_group("targetable")
-	for node in targets:
-		if node == _parent_body or node == _parent_body.get_node_or_null("CombatTarget"):
-			continue
-		var target_node: Node3D = node as Node3D
-		if target_node == null and node.get_parent() is Node3D:
-			target_node = node.get_parent() as Node3D
-		if target_node and is_instance_valid(target_node):
-			var dist := _parent_body.global_position.distance_to(target_node.global_position)
-			if dist <= skill.aoe_radius:
-				_execute_single_target_damage(skill, caster_stats, target_node)
 
 func _use_potion(type_str: String, combat_target: CombatTarget) -> bool:
 	var inv_ctrl := _parent_body.get_node_or_null("InventoryController") as InventoryController if _parent_body else null

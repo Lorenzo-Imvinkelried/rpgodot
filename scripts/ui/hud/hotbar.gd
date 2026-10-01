@@ -142,7 +142,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _setup_default_slots() -> void:
 	# Iconos y atajos por defecto de las acciones principales
 	var default_icons: Dictionary = {
-		0: { "name": "Ataque Básico (1)", "icon": "⚔", "key": "1" },
+		0: { "name": "Golpe Potente (1)", "icon": "⚔️", "key": "1" },
 		1: { "name": "Dash / Esquiva (Space)", "icon": "💨", "key": "Space" },
 		2: { "name": "Guardia Activa (Shift)", "icon": "🛡", "key": "Shift" },
 		3: { "name": "Relámpago (4)", "icon": "⚡", "key": "4" },

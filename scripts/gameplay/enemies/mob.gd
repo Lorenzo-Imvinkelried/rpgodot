@@ -28,6 +28,7 @@ signal decision_changed(old_dec: AiDecision, new_dec: AiDecision)
 
 const CombatCalculatorScript = preload("res://scripts/combat/combat_calculator.gd")
 const HealthBar3DScene = preload("res://scenes/combat/health_bar_3d.tscn")
+const AggroPoolScript = preload("res://scripts/gameplay/combat/aggro_pool.gd")
 
 @export var blueprint_type: String = "goblin"
 @export var level_override: int = -1
@@ -50,6 +51,7 @@ var mAiDecision: AiDecision = AiDecision.IDLE
 var mStance: MobBlueprint.Stance = MobBlueprint.Stance.NEUTRAL
 var mIsBoss: bool = false
 var mAggroTarget: Node3D = null
+var aggro_pool: AggroPool = AggroPoolScript.new()
 var mXpReward: int = 0
 var _last_attacker: Node = null
 
@@ -340,6 +342,10 @@ func _process_ai_patrolling(delta: float) -> void:
 	_face_direction(final_dir)
 
 func _process_ai_chasing(delta: float) -> void:
+	# Actualizar el objetivo prioritario desde el aggro pool
+	if aggro_pool != null:
+		mAggroTarget = aggro_pool.get_top_target()
+
 	# Validar existencia del objetivo
 	if not is_instance_valid(mAggroTarget):
 		return_to_spawn()
@@ -474,13 +480,16 @@ func return_to_spawn() -> void:
 	_set_ai_decision(AiDecision.RETURNING)
 	_set_state(State.WALKING)
 
+	if aggro_pool != null:
+		aggro_pool.clear()
 	mAggroTarget = null
 	_is_damage_pending = false
 	_pending_target = null
 
-	# Inmunidad total a daño y limpieza de debuffs
+	# Inmunidad total a daño, limpieza de debuffs y salida de combate
 	if combat_target:
 		combat_target.is_invulnerable = true
+		combat_target.exit_combat()
 	if status_controller:
 		status_controller.cleanse_all()
 
@@ -516,7 +525,7 @@ func get_bounding_radius() -> float:
 # ==============================================================================
 
 ## Responde a un atacante que inflige daño o entra en agro
-func on_aggroed_by(attacker: Node3D, alert_allies: bool = true) -> void:
+func on_aggroed_by(attacker: Node3D, alert_allies: bool = true, initial_threat: float = 25.0) -> void:
 	if not is_alive() or is_returning_to_spawn() or attacker == null or attacker == self:
 		return
 
@@ -525,7 +534,16 @@ func on_aggroed_by(attacker: Node3D, alert_allies: bool = true) -> void:
 		return
 
 	var was_not_chasing := (mAiDecision != AiDecision.CHASING)
-	mAggroTarget = attacker
+	if aggro_pool != null:
+		aggro_pool.add_threat(attacker, initial_threat)
+		mAggroTarget = aggro_pool.get_top_target()
+	else:
+		mAggroTarget = attacker
+
+	# Entrar en combate
+	if combat_target:
+		combat_target.enter_combat(attacker)
+
 	_set_ai_decision(AiDecision.CHASING)
 	_set_state(State.WALKING)
 
@@ -614,6 +632,8 @@ func _on_combat_target_hit(damage: float, _hit_pos: Vector3, attacker: Node) -> 
 		return
 
 	if attacker is Node3D:
+		if aggro_pool != null:
+			aggro_pool.add_threat(attacker, maxf(1.0, damage * 1.2))
 		on_aggroed_by(attacker as Node3D)
 
 	_flash_hit_feedback()
@@ -621,6 +641,11 @@ func _on_combat_target_hit(damage: float, _hit_pos: Vector3, attacker: Node) -> 
 func _on_combat_target_died() -> void:
 	if mCurrentState == State.DEAD or mCurrentState == State.FADING or mCurrentState == State.REMOVABLE:
 		return
+
+	if aggro_pool != null:
+		aggro_pool.clear()
+	if combat_target:
+		combat_target.exit_combat()
 
 	_set_state(State.DEAD)
 	_set_ai_decision(AiDecision.IDLE)

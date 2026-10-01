@@ -1,22 +1,8 @@
 class_name SkillData
-extends RefCounted
+extends BaseSkill
 
-## Responsabilidad: Definición inmutable de propiedades y balance de una habilidad activa.
-
-var id: String = ""
-var name: String = ""
-var icon: String = ""
-var key_label: String = ""
-var mana_cost: int = 0
-var cooldown: float = 0.0
-var cast_time: float = 0.0 # 0.0 = instantáneo, >0 = canalizado con CastBar
-var range_distance: float = 18.0
-var flat_damage: float = 0.0
-var is_aoe: bool = false
-var aoe_radius: float = 6.0
-var effect_type: String = "" # "slow", "bleed", "stun", ""
-var effect_duration: float = 0.0
-var effect_value: float = 0.0
+## Responsabilidad: Adaptador y fábrica compatible para definiciones dinámicas de habilidades.
+## Hereda de BaseSkill para integrarse con la arquitectura modular de habilidades.
 
 static func create(
 	p_id: String,
@@ -32,8 +18,8 @@ static func create(
 	p_effect: String = "",
 	p_effect_dur: float = 0.0,
 	p_effect_val: float = 0.0
-):
-	var s = (load("res://scripts/gameplay/skills/skill_data.gd") as GDScript).new()
+) -> BaseSkill:
+	var s: BaseSkill = (load("res://scripts/gameplay/skills/skill_data.gd") as GDScript).new()
 	s.id = p_id
 	s.name = p_name
 	s.icon = p_icon

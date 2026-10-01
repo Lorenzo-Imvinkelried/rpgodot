@@ -65,6 +65,7 @@ func bind_player(player: Node) -> void:
 	if _bound_target:
 		_bound_target.health_changed.connect(_on_health_changed)
 		_bound_target.guard_changed.connect(_on_guard_changed)
+		_bound_target.combat_state_changed.connect(_on_combat_state_changed)
 		_bound_stats = _bound_target.get_stats()
 		if _bound_stats:
 			set_player_info(_bound_stats.character_name, _bound_stats.level)
@@ -172,6 +173,8 @@ func _refresh_status_badges() -> void:
 			badges.append("❄")
 	if _bound_target and _bound_target.is_guarding:
 		badges.append("🛡")
+	if _bound_target and _bound_target.is_in_combat:
+		badges.append("⚔️")
 
 	status_icons_label.text = " ".join(badges)
 
@@ -179,6 +182,9 @@ func _on_health_changed(current: float, max_val: float) -> void:
 	set_health(current, max_val)
 	if _bound_stats:
 		set_mana(float(_bound_stats.current_mp), float(_bound_stats.max_mp))
+
+func _on_combat_state_changed(_in_combat: bool) -> void:
+	_refresh_status_badges()
 
 func _on_guard_changed(_guarding: bool) -> void:
 	_refresh_status_badges()
