@@ -461,9 +461,10 @@ func _broadcast_combat_result(hit_pos: Vector3, target_path: NodePath, result: D
 ## RPC sincronizado para que todos los clientes reproduzcan la animación del golpe con su escala de velocidad.
 @rpc("any_peer", "call_local", "reliable")
 func rpc_play_attack(speed_scale: float = 1.0) -> void:
-	if _parent_body == null:
+	var p := _get_parent_body()
+	if p == null:
 		return
-	var visuals := _parent_body.get_node_or_null("Visuals") as PlayerVisuals
+	var visuals := p.get_node_or_null("Visuals") as PlayerVisuals
 	if visuals:
 		visuals.play_attack(speed_scale)
 

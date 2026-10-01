@@ -158,6 +158,12 @@ func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 	if target == null and combat_ctrl and "current_target" in combat_ctrl:
 		target = combat_ctrl.current_target
 
+	# 2b. Auto-adquisición de objetivo cercano si no hay ninguno seleccionado
+	if target == null:
+		target = _find_nearest_target(skill.range_distance + 1.5)
+		if target and combat_ctrl and combat_ctrl.has_method("select_target"):
+			combat_ctrl.select_target(target)
+
 	# 3. Comprobación de existencia del objetivo
 	if target == null or not is_instance_valid(target):
 		skill_cast_failed.emit("Sin objetivo seleccionado")
@@ -181,6 +187,36 @@ func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 
 	_execute_skill(skill, 0, target, hotbar)
 	return true
+
+func _find_nearest_target(max_distance: float) -> Node3D:
+	if _parent_body == null or not is_inside_tree():
+		return null
+	var tree := get_tree()
+	if tree == null:
+		return null
+	var targets := tree.get_nodes_in_group("targetable")
+	var nearest: Node3D = null
+	var min_dist: float = max_distance
+	for t in targets:
+		if t == _parent_body:
+			continue
+		var t_node: Node3D = null
+		if t is Node3D:
+			t_node = t
+		elif t.get_parent() is Node3D:
+			t_node = t.get_parent() as Node3D
+		if t_node == null or not is_instance_valid(t_node):
+			continue
+		if t_node.has_method("is_alive") and not t_node.is_alive():
+			continue
+		var ct := t_node.get_node_or_null("CombatTarget") as CombatTarget
+		if ct and ct.current_health <= 0.0:
+			continue
+		var d := _parent_body.global_position.distance_to(t_node.global_position)
+		if d <= min_dist:
+			min_dist = d
+			nearest = t_node
+	return nearest
 
 func _on_cast_bar_completed(_skill_name: String) -> void:
 	if _pending_cast_slot < 0 or not _skills.has(_pending_cast_slot):

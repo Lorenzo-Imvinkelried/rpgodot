@@ -28,7 +28,7 @@ func _init() -> void:
 
 ## Ejecución con animación acelerada (1.70x), AA-Reset, Lunge procedural e impacto sincronizado
 func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree: SceneTree = null) -> Dictionary:
-	if caster == null or target == null or not is_instance_valid(target):
+	if caster == null or not is_instance_valid(caster):
 		return { "success": false }
 
 	if tree == null:
@@ -38,11 +38,14 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	if caster_stats != null and mana_cost > 0:
 		caster_stats.current_mp = maxi(0, caster_stats.current_mp - mana_cost)
 
-	# 2. Orientar al personaje hacia el objetivo
-	var diff := target.global_position - caster.global_position
-	diff.y = 0.0
-	if diff.length_squared() > 0.001:
-		caster.look_at(caster.global_position + diff.normalized(), Vector3.UP)
+	# 2. Orientar al personaje hacia el objetivo si existe
+	var forward_dir := -caster.transform.basis.z
+	if target != null and is_instance_valid(target):
+		var diff := target.global_position - caster.global_position
+		diff.y = 0.0
+		if diff.length_squared() > 0.001:
+			forward_dir = diff.normalized()
+			caster.look_at(caster.global_position + forward_dir, Vector3.UP)
 
 	# 3. Calcular la velocidad de ataque acelerada con multiplicador 1.70x (PowerStrike.h)
 	var current_atk_spd: float = 1.4
@@ -63,48 +66,50 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	# Escala de velocidad final acelerada un 70% más rápida que el golpe básico normal
 	var skill_speed_scale: float = maxf(1.70, base_anim_scale * anim_speed_multiplier)
 
-	# 4. [ANIMATION CANCELLING & AA-RESET]: Forzar reproducción inmediata desde el frame 0
+	# 4. [ANIMATION CANCELLING & AA-RESET]: Reproducir animación de golpe de inmediato
 	if visuals and visuals.has_method("play_attack"):
-		visuals.play_attack(skill_speed_scale, true)
-
-	# 5. [LUNGE PROCEDURAL]: Impulso cinético hacia adelante hacia el objetivo
-	if caster.has_method("apply_lunge"):
-		caster.apply_lunge(diff, 6.5, 0.14)
-	elif caster is CharacterBody3D and diff.length_squared() > 0.001:
-		caster.velocity += diff.normalized() * 5.0
-
-	# 6. Entrada en estado de combate del lanzador y cancelación del auto-ataque previo en CombatController
-	var caster_ct := caster.get_node_or_null("CombatTarget") as CombatTarget
-	if caster_ct:
-		caster_ct.enter_combat(target)
+		visuals.play_attack(skill_speed_scale)
 
 	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
-	if combat_ctrl:
-		# Si estaba en Windup, cancel_pending_attack cancela el impacto previo;
-		# si estaba en Recovery, cancela el backswing y resetea el timer.
-		if combat_ctrl.has_method("cancel_pending_attack"):
-			combat_ctrl.cancel_pending_attack()
-		elif combat_ctrl.has_method("reset_attack_timer"):
-			combat_ctrl.reset_attack_timer()
+	if combat_ctrl and combat_ctrl.has_method("_can_broadcast_rpc") and combat_ctrl._can_broadcast_rpc():
+		combat_ctrl.rpc("rpc_play_attack", skill_speed_scale)
 
-		if "current_target" in combat_ctrl and combat_ctrl.current_target == null:
-			combat_ctrl.current_target = target
-		if "state" in combat_ctrl and combat_ctrl.state == CombatController.State.IDLE:
-			combat_ctrl.state = CombatController.State.ATTACKING
+	# 5. [LUNGE PROCEDURAL]: Impulso cinético hacia adelante
+	if caster.has_method("apply_lunge"):
+		caster.apply_lunge(forward_dir, 6.5, 0.14)
+	elif caster is CharacterBody3D and forward_dir.length_squared() > 0.001:
+		caster.velocity += forward_dir * 5.0
 
-	# 7. Sincronización del impacto con la caída acelerada de la espada
-	var base_delay: float = float(GameConfig.get_combat_value("combat", "impact_delay", BASE_IMPACT_DELAY))
-	var real_delay: float = base_delay / skill_speed_scale
+	# 6. Sincronización y daño si hay objetivo
+	if target != null and is_instance_valid(target):
+		var caster_ct := caster.get_node_or_null("CombatTarget") as CombatTarget
+		if caster_ct:
+			caster_ct.enter_combat(target)
 
-	# Programar la entrega del daño para el momento exacto en que desciende la espada
-	if tree != null and real_delay > 0.01:
-		tree.create_timer(real_delay).timeout.connect(func():
+		if combat_ctrl:
+			if combat_ctrl.has_method("cancel_pending_attack"):
+				combat_ctrl.cancel_pending_attack()
+			elif combat_ctrl.has_method("reset_attack_timer"):
+				combat_ctrl.reset_attack_timer()
+
+			if "current_target" in combat_ctrl and combat_ctrl.current_target == null:
+				combat_ctrl.current_target = target
+			if "state" in combat_ctrl and combat_ctrl.state == CombatController.State.IDLE:
+				combat_ctrl.state = CombatController.State.ATTACKING
+
+		# 7. Sincronización del impacto con la caída acelerada de la espada
+		var base_delay: float = float(GameConfig.get_combat_value("combat", "impact_delay", BASE_IMPACT_DELAY))
+		var real_delay: float = base_delay / skill_speed_scale
+
+		# Programar la entrega del daño para el momento exacto en que desciende la espada
+		if tree != null and real_delay > 0.01:
+			tree.create_timer(real_delay).timeout.connect(func():
+				_apply_delayed_strike(caster, target, caster_stats, tree)
+			)
+		else:
 			_apply_delayed_strike(caster, target, caster_stats, tree)
-		)
-	else:
-		_apply_delayed_strike(caster, target, caster_stats, tree)
 
-	return { "success": true, "speed_scale": skill_speed_scale, "impact_delay": real_delay }
+	return { "success": true, "speed_scale": skill_speed_scale }
 
 func _apply_delayed_strike(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree: SceneTree) -> void:
 	if caster == null or not is_instance_valid(caster):

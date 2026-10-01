@@ -78,18 +78,19 @@ func get_attack_speed_scale(attacks_per_second: float) -> float:
 	return maxf(1.0, anim_length * attacks_per_second)
 
 ## Reproduce la animación de ataque / golpe ajustada a la velocidad de ataque.
-## Permite reiniciar forzosamente desde el frame 0 para cancelación de animaciones (AA-Reset).
-func play_attack(custom_speed_scale: float = 1.0, force_restart: bool = false) -> void:
+func play_attack(custom_speed_scale: float = 1.0, _force_restart: bool = false) -> void:
+	if anim_player == null:
+		_setup_anim_player()
 	if anim_player == null or _anim_attack == "":
 		return
 	cancel_hit_stop()
 	is_attacking_anim = true
 	anim_player.speed_scale = custom_speed_scale
-	if force_restart or (anim_player.current_animation == _anim_attack and anim_player.is_playing()):
+	var blend_time: float = clampf(0.08 / custom_speed_scale, 0.01, ANIM_BLEND_TIME)
+
+	if anim_player.current_animation == _anim_attack and anim_player.is_playing():
 		anim_player.seek(0.0, true)
 	else:
-		# Adaptar el tiempo de mezcla para ataques rápidos para no recortar el inicio del golpe
-		var blend_time: float = clampf(0.08 / custom_speed_scale, 0.01, ANIM_BLEND_TIME)
 		anim_player.play(_anim_attack, blend_time)
 
 ## Congela momentáneamente la animación de impacto (Hit-Stop / freeze frame) para sensación de impacto contundente.
@@ -131,11 +132,7 @@ func update_animation(is_moving: bool, current_speed: float = 0.0) -> void:
 		if anim_player == null:
 			return
 
-	# Si el jugador se mueve, cancelar el bloqueo de ataque para caminar inmediatamente
-	if is_moving:
-		is_attacking_anim = false
-
-	# Si se está reproduciendo el golpe, esperar a que termine antes de forzar Idle
+	# Si se está reproduciendo el golpe, esperar a que termine antes de cambiar a Walk o Idle
 	if is_attacking_anim:
 		if anim_player.is_playing() and anim_player.current_animation == _anim_attack:
 			return

@@ -361,7 +361,7 @@ func _process_movement(delta: float) -> void:
 		_lunge_timer -= delta
 		velocity.x = _lunge_velocity.x
 		velocity.z = _lunge_velocity.z
-		is_moving = true
+		is_moving = false
 		move_and_slide()
 		return
 
@@ -371,6 +371,8 @@ func _process_movement(delta: float) -> void:
 		if combat_controller and combat_controller.is_active():
 			combat_controller.clear_target()
 		clear_click_move()
+		if visuals:
+			visuals.is_attacking_anim = false
 
 	# Auto-aproximación hacia el objetivo de combate (directo, en línea recta y sin alterar la cámara)
 	if not has_manual_input and combat_controller and combat_controller.is_approaching() and not (visuals and visuals.is_playing_attack()):

@@ -117,5 +117,30 @@ func _run_tests() -> void:
 	assert(absf(p_strike.anim_speed_multiplier - 1.70) < 0.01, "SkillPowerStrike debe tener exactamente multiplicador 1.70x (obtenido: %.2f)" % p_strike.anim_speed_multiplier)
 	print("[OK] Prueba 3: Multiplicador 1.70x validado.")
 
+	# --------------------------------------------------------------------------
+	# PRUEBA 4: Disparo efectivo de la animación (play_attack y PlayerVisuals)
+	# --------------------------------------------------------------------------
+	var p_visuals := PlayerVisuals.new()
+	p_visuals.name = "Visuals"
+	player.add_child(p_visuals)
+
+	var a_player := AnimationPlayer.new()
+	var a_lib := AnimationLibrary.new()
+	var a_anim := Animation.new()
+	a_anim.length = 1.0
+	a_lib.add_animation("attack", a_anim)
+	a_player.add_animation_library("", a_lib)
+	p_visuals.add_child(a_player)
+	p_visuals.anim_player = a_player
+	p_visuals._anim_attack = "attack"
+	await process_frame
+
+	skill_ctrl._cooldowns[0] = 0.0
+	var cast_anim_ok := skill_ctrl.activate_slot(0, dummy, null, null)
+	assert(cast_anim_ok == true, "Power Strike debe activarse")
+	assert(p_visuals.is_attacking_anim == true, "is_attacking_anim DEBE ser true al tirar Golpe Potente")
+	assert(a_player.is_playing() and a_player.current_animation == "attack", "AnimationPlayer DEBE estar reproduciendo la animación de ataque")
+	print("[OK] Prueba 4: Disparo efectivo de animación y estado visual verificado.")
+
 	print("\n>>> TODOS LOS TESTS DE AA-RESET Y ANIMATION CANCELLING PASARON CON ÉXITO <<<\n")
 	quit(0)
