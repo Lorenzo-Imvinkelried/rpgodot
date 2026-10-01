@@ -79,7 +79,7 @@
     "base_evasion": 200.0,
     "base_crit_chance": 5.0,
     "base_crit_damage": 150.0,
-    "base_atk_speed": 5.4,
+    "base_atk_speed": 0.5,
     "armor_pen_flat": 0.0,
     "armor_pen_percent": 0.0,
     "true_damage_percent": 0.0,

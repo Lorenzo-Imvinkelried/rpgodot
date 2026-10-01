@@ -92,9 +92,14 @@ func _run_tests() -> void:
 	var cast_ok := skill_ctrl.activate_slot(0, dummy, null, null)
 	assert(cast_ok == true, "activate_slot(0) debe ejecutar la Skill 1")
 	assert(p_stats.current_mp == mp_before - p_strike.mana_cost, "Debe deducir el coste de maná de Skill 1")
+	assert(float(d_stats.current_hp) == hp_before, "El daño NO debe entrar inmediatamente al presionar la tecla (debe esperar a la caída de la espada)")
+
+	# Esperar al impacto sincronizado de la espada
+	await create_timer(0.45).timeout
+
 	var hp_after := float(d_stats.current_hp)
 	var dmg_dealt := hp_before - hp_after
-	assert(dmg_dealt > float(p_stats.attack) * 1.3, "El golpe básico potenciado debe infligir daño aumentado (obtenido: %.1f)" % dmg_dealt)
+	assert(dmg_dealt > float(p_stats.attack) * 1.3, "El golpe básico potenciado debe infligir daño aumentado cuando cae la espada (obtenido: %.1f)" % dmg_dealt)
 	assert(skill_ctrl._cooldowns.has(0), "Slot 0 debe registrar cooldown tras ejecutarse")
 
 	# Re-intentar activación en cooldown: DEBE RECHAZARSE Y NO ATACAR
