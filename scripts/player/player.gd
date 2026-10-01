@@ -22,6 +22,7 @@ const GroundMarkerScript = preload("res://scripts/player/ground_marker.gd")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var _was_forward_pressed: bool = false
+var _is_moving_backward: bool = false
 var _prev_global_pos: Vector3 = Vector3.ZERO
 
 # Temporizadores y variables de Dash y Guardia Activa
@@ -190,12 +191,10 @@ func _process(delta: float) -> void:
 	if visuals:
 		var speed: float = 0.0
 		if is_multiplayer_authority():
-			var forward_dir := -transform.basis.z
 			var horiz_vel := Vector3(velocity.x, 0.0, velocity.z)
-			if horiz_vel.length_squared() > 0.01:
-				var dot := forward_dir.dot(horiz_vel.normalized())
-				var sign_dir := -1.0 if dot < -0.2 else 1.0
-				speed = horiz_vel.length() * sign_dir
+			var speed_mag := horiz_vel.length()
+			if speed_mag > 0.01 and is_moving:
+				speed = -speed_mag if _is_moving_backward else speed_mag
 		else:
 			if delta > 0.0:
 				var dist := global_position.distance_to(_prev_global_pos)
@@ -238,6 +237,7 @@ func _process_movement(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 		is_moving = false
+		_is_moving_backward = false
 		move_and_slide()
 		return
 
@@ -247,6 +247,7 @@ func _process_movement(delta: float) -> void:
 		velocity.x = _dash_velocity.x
 		velocity.z = _dash_velocity.z
 		is_moving = true
+		_is_moving_backward = false
 		move_and_slide()
 		return
 
@@ -316,6 +317,7 @@ func _process_movement(delta: float) -> void:
 		velocity.x = _dash_velocity.x
 		velocity.z = _dash_velocity.z
 		is_moving = true
+		_is_moving_backward = false
 		move_and_slide()
 		return
 
@@ -338,6 +340,7 @@ func _process_movement(delta: float) -> void:
 			velocity.x = approach_dir.x * config.forward_speed * move_speed_mult
 			velocity.z = approach_dir.z * config.forward_speed * move_speed_mult
 			is_moving = true
+			_is_moving_backward = false
 			move_and_slide()
 			return
 
@@ -347,6 +350,7 @@ func _process_movement(delta: float) -> void:
 		velocity.x = 0.0
 		velocity.z = 0.0
 		is_moving = false
+		_is_moving_backward = false
 		move_and_slide()
 		return
 
@@ -365,6 +369,7 @@ func _process_movement(delta: float) -> void:
 				velocity.x = 0.0
 				velocity.z = 0.0
 				is_moving = false
+				_is_moving_backward = false
 				move_and_slide()
 				return
 		else:
@@ -376,6 +381,7 @@ func _process_movement(delta: float) -> void:
 			velocity.x = 0.0
 			velocity.z = 0.0
 			is_moving = false
+			_is_moving_backward = false
 			move_and_slide()
 			return
 		else:
@@ -384,6 +390,7 @@ func _process_movement(delta: float) -> void:
 			velocity.x = move_dir.x * config.forward_speed * move_speed_mult
 			velocity.z = move_dir.z * config.forward_speed * move_speed_mult
 			is_moving = true
+			_is_moving_backward = false
 			move_and_slide()
 			return
 
@@ -407,16 +414,19 @@ func _process_movement(delta: float) -> void:
 		var forward_dir := -transform.basis.z
 		velocity.x = forward_dir.x * config.forward_speed * move_speed_mult
 		velocity.z = forward_dir.z * config.forward_speed * move_speed_mult
+		_is_moving_backward = false
 	elif forward_input < 0.0:
 		# Retroceder hacia atrás SIN rotar el cuerpo ni la cara
 		var forward_dir := -transform.basis.z
 		velocity.x = -forward_dir.x * config.backward_speed * move_speed_mult
 		velocity.z = -forward_dir.z * config.backward_speed * move_speed_mult
+		_is_moving_backward = true
 	else:
 		# Desaceleración
 		var decel_rate := config.forward_speed * config.deceleration_factor * delta
 		velocity.x = move_toward(velocity.x, 0.0, decel_rate)
 		velocity.z = move_toward(velocity.z, 0.0, decel_rate)
+		_is_moving_backward = false
 
 	is_moving = forward_input != 0.0
 

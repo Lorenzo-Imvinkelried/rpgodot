@@ -11,7 +11,8 @@ const COLOR_RIVAL_TINT := Color(1.0, 0.65, 0.45)
 # Configuración de animaciones y transiciones
 const ANIM_BLEND_TIME: float = 0.25
 const KEYWORDS_IDLE: Array[String] = ["idle", "stand"]
-const KEYWORDS_WALK: Array[String] = ["walk", "run", "move"]
+const KEYWORDS_WALK: Array[String] = ["walk"]
+const KEYWORDS_RUN: Array[String] = ["run", "sprint", "fast"]
 const KEYWORDS_ATTACK: Array[String] = ["slash", "attack", "punch", "strike", "hit"]
 
 const StrideAnalyzerScript = preload("res://scripts/player/stride_analyzer.gd")
@@ -25,8 +26,10 @@ const GhostSlashFXScript = preload("res://scripts/combat/ghost_slash_fx.gd")
 var anim_player: AnimationPlayer = null
 var _anim_idle: String = ""
 var _anim_walk: String = ""
+var _anim_run: String = ""
 var _anim_attack: String = ""
-var _natural_walk_speed: float = 4.0
+var _natural_walk_speed: float = 3.5
+var _natural_run_speed: float = 6.0
 var is_attacking_anim: bool = false
 
 func _ready() -> void:
@@ -115,19 +118,41 @@ func update_animation(is_moving: bool, current_speed: float = 0.0) -> void:
 			return
 		is_attacking_anim = false
 
-	var target_anim := _anim_walk if is_moving else _anim_idle
-	if target_anim != "" and anim_player.current_animation != target_anim:
-		anim_player.play(target_anim)
-
-	if not is_moving:
+	if not is_moving or absf(current_speed) < 0.05:
+		if _anim_idle != "" and anim_player.current_animation != _anim_idle:
+			anim_player.play(_anim_idle, ANIM_BLEND_TIME)
 		anim_player.speed_scale = 1.0
+		return
+
+	# Determinar si corresponde animación de correr o caminar
+	var is_backward := current_speed < -0.05
+	var abs_speed := absf(current_speed)
+	var target_anim: String = ""
+	var final_speed_scale: float = 1.0
+
+	if is_backward:
+		# Movimiento hacia atrás: caminar en reversa de forma suave y controlada
+		target_anim = _anim_walk if _anim_walk != "" else _anim_run
+		var ref_speed := 4.2
+		var scale_factor := abs_speed / ref_speed
+		final_speed_scale = -clampf(scale_factor, 0.85, 1.25)
+	elif abs_speed >= 4.5 and _anim_run != "":
+		# Desplazamiento rápido hacia adelante (WASD W, Click-to-Move, aproximación de ataque)
+		target_anim = _anim_run
+		var ref_speed := 6.0
+		var scale_factor := abs_speed / ref_speed
+		final_speed_scale = clampf(scale_factor, 0.85, 1.25)
 	else:
-		# Sincronización exacta de zancada (Stride Scaling)
-		if _natural_walk_speed > 0.01 and absf(current_speed) > 0.01:
-			var scale_factor := current_speed / _natural_walk_speed
-			anim_player.speed_scale = clampf(scale_factor, -6.0, 6.0)
-		else:
-			anim_player.speed_scale = 1.0
+		# Desplazamiento moderado o ralentizado (guardia con escudo, estados alterados)
+		target_anim = _anim_walk if _anim_walk != "" else _anim_run
+		var ref_speed := 3.5
+		var scale_factor := abs_speed / ref_speed
+		final_speed_scale = clampf(scale_factor, 0.85, 1.25)
+
+	if target_anim != "" and anim_player.current_animation != target_anim:
+		anim_player.play(target_anim, ANIM_BLEND_TIME)
+
+	anim_player.speed_scale = final_speed_scale
 
 func _setup_anim_player() -> void:
 	if character_model == null:
@@ -142,8 +167,18 @@ func _setup_anim_player() -> void:
 				if anim:
 					anim.loop_mode = Animation.LOOP_LINEAR
 			_anim_idle = _find_best_match(available, KEYWORDS_IDLE, true)
-			_anim_walk = _find_best_match(available, KEYWORDS_WALK, true)
+			_anim_walk = _find_best_match(available, KEYWORDS_WALK, false)
+			_anim_run = _find_best_match(available, KEYWORDS_RUN, false)
 			_anim_attack = _find_best_match(available, KEYWORDS_ATTACK, false)
+
+			# Robustez de fallback entre walk y run
+			if _anim_walk == "" and _anim_run != "":
+				_anim_walk = _anim_run
+			elif _anim_run == "" and _anim_walk != "":
+				_anim_run = _anim_walk
+			elif _anim_walk == "" and _anim_run == "":
+				_anim_walk = _find_best_match(available, ["move", "locomotion"], true)
+				_anim_run = _anim_walk
 
 			# Si el modelo no tiene animación de ataque nativa, inyectar el recurso de golpe
 			if _anim_attack == "" or _anim_attack == _anim_idle or _anim_attack == _anim_walk:
@@ -161,8 +196,11 @@ func _setup_anim_player() -> void:
 				attack_res.loop_mode = Animation.LOOP_NONE
 
 			# Analizar la zancada del modelo automáticamente
-			if character_model and _anim_walk != "":
-				_natural_walk_speed = StrideAnalyzerScript.calculate_natural_speed(character_model, anim_player, _anim_walk)
+			if character_model:
+				if _anim_walk != "":
+					_natural_walk_speed = StrideAnalyzerScript.calculate_natural_speed(character_model, anim_player, _anim_walk)
+				if _anim_run != "":
+					_natural_run_speed = StrideAnalyzerScript.calculate_natural_speed(character_model, anim_player, _anim_run)
 
 			update_animation(false, 0.0)
 
