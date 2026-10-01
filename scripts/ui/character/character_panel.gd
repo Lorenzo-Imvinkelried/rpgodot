@@ -152,9 +152,19 @@ func _refresh_stats_display() -> void:
 	if _bound_stats == null:
 		return
 
-	# Re-aplicar bonificaciones de equipo a las estadísticas
 	if _bound_equipment and not is_inspect_mode:
 		_bound_equipment.apply_equipment_stats_to(_bound_stats)
+
+	if title_label and _bound_stats and not is_inspect_mode:
+		title_label.text = "👤 %s (Lvl %d) & Equipamiento" % [_bound_stats.character_name, _bound_stats.level]
+
+	_add_stat_header("NIVEL Y PROGRESO")
+	_add_stat_line("Nivel de Personaje", "%d" % _bound_stats.level)
+	if _bound_target and _bound_target.get_parent():
+		var prog := _bound_target.get_parent().get_node_or_null("ProgressionController") as Node
+		if prog and "current_exp" in prog and "xp_required" in prog:
+			var ratio := (float(prog.current_exp) / float(maxi(1, int(prog.xp_required)))) * 100.0
+			_add_stat_line("Experiencia", "%d / %d (%.1f%%)" % [int(prog.current_exp), int(prog.xp_required), ratio])
 
 	_add_stat_header("ATRIBUTOS BASE")
 	_add_stat_line("Fuerza (STR)", "%d (+%d)" % [_bound_stats.base_str, _bound_stats.bonus_str])

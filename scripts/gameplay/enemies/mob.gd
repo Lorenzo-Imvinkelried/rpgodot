@@ -50,6 +50,8 @@ var mAiDecision: AiDecision = AiDecision.IDLE
 var mStance: MobBlueprint.Stance = MobBlueprint.Stance.NEUTRAL
 var mIsBoss: bool = false
 var mAggroTarget: Node3D = null
+var mXpReward: int = 0
+var _last_attacker: Node = null
 
 # Temporizadores y contadores internos
 var _idle_timer: float = 0.0
@@ -128,6 +130,7 @@ func init_from_blueprint(bp: MobBlueprint, p_level: int = -1, p_is_boss: bool = 
 	mBlueprintName = bp.type
 	mStance = bp.stance
 	mIsBoss = p_is_boss
+	mXpReward = bp.get_scaled_xp(p_level, mIsBoss)
 
 	# Generar estadísticas con escalado polinomial
 	var stats := bp.create_character_stats(p_level, mIsBoss)
@@ -153,12 +156,14 @@ func reset(start_pos: Vector3, start_with_fade_in: bool = true, p_level: int = -
 	velocity = Vector3.ZERO
 	mMoveDir = Vector3.ZERO
 	mAggroTarget = null
+	_last_attacker = null
 	_is_damage_pending = false
 	_pending_target = null
 	_attack_cooldown_timer = 0.0
 
 	# Restaurar estadísticas completas al 100%
 	if mBlueprint:
+		mXpReward = mBlueprint.get_scaled_xp(p_level, mIsBoss)
 		var stats := mBlueprint.create_character_stats(p_level, mIsBoss)
 		combat_target.stats = stats
 		combat_target.max_health = float(stats.max_hp)
@@ -599,6 +604,9 @@ func _calculate_separation_force() -> Vector3:
 # ==============================================================================
 
 func _on_combat_target_hit(damage: float, _hit_pos: Vector3, attacker: Node) -> void:
+	if attacker:
+		_last_attacker = attacker
+
 	if health_bar and combat_target:
 		health_bar.set_health(combat_target.current_health, combat_target.max_health, false)
 
@@ -626,10 +634,17 @@ func _on_combat_target_died() -> void:
 	mob_died.emit(self, mAggroTarget)
 
 	# Otorgar XP al atacante (Sección 6.10)
-	var killer = mAggroTarget
-	if killer and killer.has_method("add_experience") and mBlueprint:
-		var xp_gain: int = combat_target.get_stats().level * 50 if combat_target.get_stats() else mBlueprint.xp
-		killer.add_experience(xp_gain)
+	var killer: Node = mAggroTarget if is_instance_valid(mAggroTarget) else _last_attacker
+	if killer == null and combat_target and is_instance_valid(combat_target.last_attacker):
+		killer = combat_target.last_attacker
+
+	var target_entity: Node = killer
+	while target_entity != null and not target_entity.has_method("add_experience"):
+		target_entity = target_entity.get_parent()
+
+	if target_entity and target_entity.has_method("add_experience"):
+		var xp_gain: int = mXpReward if mXpReward > 0 else (mBlueprint.xp if mBlueprint else 150)
+		target_entity.add_experience(xp_gain)
 
 	# Pasar a Fading
 	_set_state(State.FADING)

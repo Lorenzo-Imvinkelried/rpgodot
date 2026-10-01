@@ -26,6 +26,7 @@ const StatusEffectControllerScript = preload("res://scripts/combat/status_effect
 			current_health = float(stats.current_hp)
 
 var current_health: float = 100.0
+var last_attacker: Node = null
 
 # --- Mecánicas Defensivas Activas (I-Frames / Guardia) ---
 var is_invulnerable: bool = false
@@ -92,6 +93,9 @@ func get_stats() -> CharacterStats:
 
 ## Procesa un resultado de combate (DamageResult) calculado por CombatCalculator.
 func take_combat_result(result: DamageResult, hit_position: Vector3, attacker: Node) -> void:
+	if attacker:
+		last_attacker = attacker
+
 	if result == null:
 		return
 
@@ -188,6 +192,8 @@ func take_combat_result(result: DamageResult, hit_position: Vector3, attacker: N
 
 ## Registra un impacto plano recibido (mantenido por compatibilidad).
 func take_hit(damage: float, hit_position: Vector3, attacker: Node) -> void:
+	if attacker:
+		last_attacker = attacker
 	var res := DamageResult.new()
 	res.total_damage = int(round(damage))
 	res.physical_damage = res.total_damage

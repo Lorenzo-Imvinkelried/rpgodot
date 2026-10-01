@@ -88,11 +88,16 @@ func bind_player(player_node: Node) -> void:
 		if stats and eq_ctrl:
 			character_panel.bind_character(stats, eq_ctrl, inv_ctrl, tgt_ctrl)
 
-	var target_comp := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
-	if target_comp:
-		var stats := target_comp.get_stats()
-		if stats and exp_bar:
-			exp_bar.set_experience(0, 1000)
+	var prog_ctrl := _bound_player.get_node_or_null("ProgressionController") as Node
+	if prog_ctrl:
+		if exp_bar and "current_exp" in prog_ctrl and "xp_required" in prog_ctrl:
+			exp_bar.set_experience(int(prog_ctrl.current_exp), int(prog_ctrl.xp_required))
+		if prog_ctrl.has_signal("experience_gained") and not prog_ctrl.experience_gained.is_connected(_on_experience_gained):
+			prog_ctrl.experience_gained.connect(_on_experience_gained)
+		if prog_ctrl.has_signal("level_up") and not prog_ctrl.level_up.is_connected(_on_player_level_up):
+			prog_ctrl.level_up.connect(_on_player_level_up)
+	elif exp_bar:
+		exp_bar.set_experience(0, 1000)
 
 ## Intenta localizar y vincular automáticamente al jugador local si aún no está asignado.
 func _try_auto_bind_player() -> void:
@@ -187,5 +192,20 @@ func _on_skill_cast_failed(reason: String) -> void:
 func _on_stun_interrupt_cast(_dur: float) -> void:
 	if cast_bar and cast_bar.is_casting():
 		cast_bar.cancel_cast()
+
+func _on_experience_gained(_amount: int, current_xp: int, max_xp: int) -> void:
+	if exp_bar:
+		exp_bar.set_experience(current_xp, max_xp)
+
+func _on_player_level_up(new_lvl: int, _gains: Dictionary) -> void:
+	if player_frame and _bound_player:
+		var ct := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
+		var stats := ct.get_stats() if ct else null
+		if stats:
+			player_frame.set_player_info(stats.character_name, new_lvl)
+			player_frame.set_health(float(stats.current_hp), float(stats.max_hp))
+			player_frame.set_mana(float(stats.current_mp), float(stats.max_mp))
+	if character_panel and character_panel.visible:
+		character_panel._refresh_all()
 
 

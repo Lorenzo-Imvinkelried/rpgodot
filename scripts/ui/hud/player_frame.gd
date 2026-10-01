@@ -84,7 +84,18 @@ func bind_player(player: Node) -> void:
 		_bound_status.slow_applied.connect(_on_status_changed)
 		_bound_status.slow_removed.connect(_on_status_changed)
 
+	var prog_ctrl := _bound_player.get_node_or_null("ProgressionController") as Node
+	if prog_ctrl and prog_ctrl.has_signal("level_up"):
+		if not prog_ctrl.level_up.is_connected(_on_progression_level_up):
+			prog_ctrl.level_up.connect(_on_progression_level_up)
+
 	_refresh_status_badges()
+
+func _on_progression_level_up(new_lvl: int, _gains: Dictionary) -> void:
+	if _bound_stats:
+		set_player_info(_bound_stats.character_name, new_lvl)
+		set_health(float(_bound_stats.current_hp), float(_bound_stats.max_hp))
+		set_mana(float(_bound_stats.current_mp), float(_bound_stats.max_mp))
 
 func set_player_info(player_name: String, level: int) -> void:
 	if name_label:

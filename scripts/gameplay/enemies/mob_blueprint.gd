@@ -182,3 +182,15 @@ func create_character_stats(level_override: int = -1, is_boss: bool = false) -> 
 		stats.tenacity_percent += 50.0
 
 	return stats
+
+## Retorna la recompensa de experiencia calculada con escalado polinomial por nivel y estatus de Jefe.
+func get_scaled_xp(target_level: int = -1, p_is_boss: bool = false) -> int:
+	var target_lvl := level if target_level <= 0 else target_level
+	var delta_l: int = target_lvl - level
+	var dl: float = float(delta_l)
+	var dl_sq: float = dl * dl
+	var xp_mult: float = 1.0 + (dl * 0.30) + (dl_sq * 0.01)
+	var final_xp: int = int(round(float(xp) * xp_mult))
+	if p_is_boss:
+		final_xp = int(round(final_xp * 3.0))
+	return maxi(10, final_xp)

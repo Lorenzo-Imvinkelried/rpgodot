@@ -7,6 +7,7 @@ extends CharacterBody3D
 
 const DEFAULT_CONFIG = preload("res://resources/player/default_player_config.tres")
 const GroundMarkerScript = preload("res://scripts/player/ground_marker.gd")
+const ProgressionControllerScript = preload("res://scripts/gameplay/progression/progression_controller.gd")
 
 @export var config: PlayerConfig = DEFAULT_CONFIG
 @export var is_moving: bool = false
@@ -19,6 +20,7 @@ const GroundMarkerScript = preload("res://scripts/player/ground_marker.gd")
 @onready var inventory_controller: InventoryController = get_node_or_null("InventoryController")
 @onready var equipment_controller: EquipmentController = get_node_or_null("EquipmentController")
 @onready var skill_controller: SkillController = get_node_or_null("SkillController")
+@onready var progression_controller: ProgressionController = get_node_or_null("ProgressionController")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var _was_forward_pressed: bool = false
@@ -97,6 +99,17 @@ func _ready() -> void:
 		skill_controller.name = "SkillController"
 		add_child(skill_controller)
 
+	if progression_controller == null:
+		progression_controller = ProgressionControllerScript.new()
+		progression_controller.name = "ProgressionController"
+		add_child(progression_controller)
+
+	if combat_target:
+		progression_controller.setup(combat_target)
+
+	progression_controller.experience_gained.connect(_on_experience_gained)
+	progression_controller.level_up.connect(_on_level_up)
+
 func _setup_starter_inventory() -> void:
 	if inventory_controller:
 		inventory_controller.add_item(ItemData.create_potion("Poción de Salud", 60.0, 0.0, 10))
@@ -119,6 +132,30 @@ func _on_player_died() -> void:
 		if combat_target:
 			combat_target.sync_reset_health()
 	)
+
+func _on_experience_gained(amount: int, _curr: int, _req: int) -> void:
+	if amount > 0:
+		_spawn_floating_text("+%d XP" % amount)
+
+func _on_level_up(new_lvl: int, _gains: Dictionary) -> void:
+	_spawn_floating_text("¡NIVEL %d!" % new_lvl)
+
+func _spawn_floating_text(text_msg: String) -> void:
+	if combat_target and combat_target.has_method("_spawn_damage_number"):
+		combat_target._spawn_damage_number(0.0, global_position + Vector3(0, 2.2, 0), false, false, false, false, false, false, text_msg)
+
+## Añade experiencia al personaje a través de su controlador de progresión.
+func add_experience(amount: int) -> void:
+	if progression_controller:
+		progression_controller.add_experience(amount)
+
+## Retorna el nivel actual del personaje.
+func get_level() -> int:
+	if progression_controller:
+		return progression_controller.current_level
+	if combat_target and combat_target.get_stats():
+		return combat_target.get_stats().level
+	return 1
 
 ## Selecciona un objetivo de combate sin iniciar aproximación ni ataque automático.
 func select_target(target: Node3D) -> void:

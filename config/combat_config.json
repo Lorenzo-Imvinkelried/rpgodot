@@ -40,6 +40,17 @@
     "guard_block_value_bonus": 25.0,
     "guard_speed_multiplier": 0.70
   },
+  "progression": {
+    "base_xp": 250.0,
+    "xp_exponent": 1.35,
+    "xp_linear_offset": 50.0,
+    "stat_gains_per_level": {
+      "base_str": 2,
+      "base_agi": 2,
+      "base_int": 2,
+      "base_vit": 3
+    }
+  },
   "stat_scaling": {
     "hp_per_vit": 20.0,
     "def_per_vit": 2.0,
