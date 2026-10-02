@@ -26,6 +26,10 @@ var _pending_hotbar: Control = null
 
 var _parent_body: CharacterBody3D = null
 
+var _queued_slot: int = -1
+var _queued_target: Node3D = null
+var _queued_hotbar: Control = null
+
 func _ready() -> void:
 	_parent_body = get_parent() as CharacterBody3D
 	_setup_default_skills()
@@ -35,6 +39,9 @@ func _process(delta: float) -> void:
 		_cooldowns[slot] -= delta
 		if _cooldowns[slot] <= 0.0:
 			_cooldowns.erase(slot)
+
+	if _queued_slot >= 0:
+		_process_queued_skill()
 
 func _setup_default_skills() -> void:
 	# Slot 0 (Key 1): Skill 1 - Golpe Potente (básico más fuerte y rápido)
@@ -158,6 +165,17 @@ func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 	if target == null and combat_ctrl and "current_target" in combat_ctrl:
 		target = combat_ctrl.current_target
 
+	# Descartar si el objetivo actual es el propio jugador o si ya está muerto
+	if target != null:
+		if target == _parent_body or not is_instance_valid(target):
+			target = null
+		elif target.has_method("is_alive") and not target.is_alive():
+			target = null
+		else:
+			var ct := target.get_node_or_null("CombatTarget") as CombatTarget
+			if ct and ct.current_health <= 0.0:
+				target = null
+
 	# 2b. Auto-adquisición de objetivo cercano si no hay ninguno seleccionado
 	if target == null:
 		target = _find_nearest_target(skill.range_distance + 1.5)
@@ -165,7 +183,7 @@ func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 			combat_ctrl.select_target(target)
 
 	# 3. Comprobación de existencia del objetivo
-	if target == null or not is_instance_valid(target):
+	if target == null or not is_instance_valid(target) or target == _parent_body:
 		skill_cast_failed.emit("Sin objetivo seleccionado")
 		return false
 
@@ -175,8 +193,13 @@ func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 	if combat_ctrl and combat_ctrl.has_method("get_effective_attack_range"):
 		max_range = maxf(max_range, combat_ctrl.get_effective_attack_range(target))
 	if dist > max_range:
-		skill_cast_failed.emit("Objetivo fuera de alcance")
-		return false
+		# Auto-aproximación: comenzar a caminar hacia el objetivo y ejecutar en cuanto llegue a rango
+		if combat_ctrl and combat_ctrl.has_method("attack_target"):
+			combat_ctrl.attack_target(target)
+		_queued_slot = 0
+		_queued_target = target
+		_queued_hotbar = hotbar
+		return true
 
 	# 5. Validar maná
 	var caster_ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget if _parent_body else null
@@ -188,6 +211,46 @@ func _activate_skill_1(target: Node3D, hotbar: Control) -> bool:
 	_execute_skill(skill, 0, target, hotbar)
 	return true
 
+func _process_queued_skill() -> void:
+	if _parent_body == null or _queued_target == null or not is_instance_valid(_queued_target):
+		_cancel_queued_skill()
+		return
+
+	if not CombatController.is_target_alive(_queued_target):
+		_cancel_queued_skill()
+		return
+
+	var combat_ctrl: Node = _parent_body.get_node_or_null("CombatController")
+	if combat_ctrl and "current_target" in combat_ctrl and combat_ctrl.current_target != _queued_target:
+		_cancel_queued_skill()
+		return
+
+	var skill: BaseSkill = _skills.get(_queued_slot, null)
+	if skill == null:
+		_cancel_queued_skill()
+		return
+
+	var dist := _parent_body.global_position.distance_to(_queued_target.global_position)
+	var max_range := skill.range_distance
+	if combat_ctrl and combat_ctrl.has_method("get_effective_attack_range"):
+		max_range = maxf(max_range, combat_ctrl.get_effective_attack_range(_queued_target))
+
+	if dist <= max_range:
+		var slot_to_exec := _queued_slot
+		var target_to_exec := _queued_target
+		var hotbar_to_exec := _queued_hotbar
+		_cancel_queued_skill()
+
+		if slot_to_exec == 0:
+			_activate_skill_1(target_to_exec, hotbar_to_exec)
+		else:
+			activate_slot(slot_to_exec, target_to_exec, null, hotbar_to_exec)
+
+func _cancel_queued_skill() -> void:
+	_queued_slot = -1
+	_queued_target = null
+	_queued_hotbar = null
+
 func _find_nearest_target(max_distance: float) -> Node3D:
 	if _parent_body == null or not is_inside_tree():
 		return null
@@ -198,14 +261,14 @@ func _find_nearest_target(max_distance: float) -> Node3D:
 	var nearest: Node3D = null
 	var min_dist: float = max_distance
 	for t in targets:
-		if t == _parent_body:
+		if t == _parent_body or t == _parent_body.get_node_or_null("CombatTarget"):
 			continue
 		var t_node: Node3D = null
 		if t is Node3D:
 			t_node = t
 		elif t.get_parent() is Node3D:
 			t_node = t.get_parent() as Node3D
-		if t_node == null or not is_instance_valid(t_node):
+		if t_node == null or not is_instance_valid(t_node) or t_node == _parent_body:
 			continue
 		if t_node.has_method("is_alive") and not t_node.is_alive():
 			continue

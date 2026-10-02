@@ -51,6 +51,10 @@ func set_target(target_node: Node) -> void:
 		_clear()
 		return
 
+	if _current_combat_target.current_health <= 0.0 or (_current_target_node is Node3D and not CombatController.is_target_alive(_current_target_node as Node3D)):
+		_clear()
+		return
+
 	_current_combat_target.health_changed.connect(_on_target_health_changed)
 	_current_combat_target.died.connect(_on_target_died)
 	_current_stats = _current_combat_target.get_stats()
@@ -111,7 +115,17 @@ func set_mana(current: float, max_val: float) -> void:
 		mana_label.text = "%d / %d" % [int(ceil(current_mana)), int(max_mana)]
 
 func _on_target_health_changed(current: float, max_val: float) -> void:
+	if current <= 0.0:
+		_clear()
+		return
 	set_health(current, max_val)
+	if _current_combat_target:
+		if _current_stats == null:
+			_current_stats = _current_combat_target.get_stats()
+		if _current_stats and level_label:
+			level_label.text = "Lvl: %d" % _current_stats.level
+		if name_label and not _current_combat_target.target_name.is_empty():
+			name_label.text = _current_combat_target.target_name
 	_refresh_status_badges()
 
 func _on_target_died() -> void:

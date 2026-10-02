@@ -41,7 +41,9 @@ func _ready() -> void:
 	auto_hide_when_full = bool(GameConfig.get_ui_value("health_bar", "auto_hide_when_full", auto_hide_when_full))
 	use_dynamic_health_color = bool(GameConfig.get_ui_value("health_bar", "use_dynamic_health_color", use_dynamic_health_color))
 
-	position.y = height_offset
+	if position.y == 0.0:
+		height_offset = float(GameConfig.get_ui_value("health_bar", "height_offset", height_offset))
+		position.y = height_offset
 
 	_setup_floating_ui()
 
@@ -75,6 +77,7 @@ func _ready() -> void:
 		combat_target.health_changed.connect(_on_health_changed)
 		combat_target.guard_changed.connect(_on_guard_changed)
 		combat_target.combat_state_changed.connect(_on_combat_state_changed)
+		combat_target.died.connect(_on_combat_target_died)
 		if not combat_target.target_name.is_empty() and _base_entity_name.is_empty():
 			set_entity_name(combat_target.target_name)
 		set_health(combat_target.current_health, combat_target.max_health, false)
@@ -195,6 +198,19 @@ func _process(_delta: float) -> void:
 	if not is_visible_in_tree():
 		_ui_container.visible = false
 		return
+
+	if combat_target != null and combat_target.current_health <= 0.0:
+		_ui_container.visible = false
+		return
+
+func set_visible_ui(p_visible: bool) -> void:
+	if _ui_container != null and is_instance_valid(_ui_container):
+		_ui_container.visible = p_visible
+	if sprite_3d != null and is_instance_valid(sprite_3d):
+		sprite_3d.visible = p_visible
+
+func _on_combat_target_died() -> void:
+	set_visible_ui(false)
 
 	var vp := get_viewport()
 	if vp == null:

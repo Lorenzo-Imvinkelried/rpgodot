@@ -155,8 +155,7 @@ func use_consumable_at(slot_index: int, target: CombatTarget) -> bool:
 
 	if target:
 		if hp_heal > 0.0:
-			target.current_health = minf(target.max_health, target.current_health + hp_heal)
-			target.health_changed.emit(target.current_health, target.max_health)
+			target.heal(hp_heal)
 		if mp_heal > 0.0 and target.stats != null:
 			target.stats.current_mp = mini(target.stats.max_mp, target.stats.current_mp + int(mp_heal))
 			target.health_changed.emit(target.current_health, target.max_health)

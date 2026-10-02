@@ -32,7 +32,20 @@ var _slow_attack_percent: float = 0.0
 
 @onready var _combat_target: CombatTarget = get_parent().get_node_or_null("CombatTarget")
 
+func _ready() -> void:
+	if _combat_target == null and get_parent() != null:
+		_combat_target = get_parent().get_node_or_null("CombatTarget")
+	if _combat_target != null:
+		if not _combat_target.died.is_connected(cleanse_all):
+			_combat_target.died.connect(cleanse_all)
+
 func _process(delta: float) -> void:
+	if _combat_target == null and get_parent() != null:
+		_combat_target = get_parent().get_node_or_null("CombatTarget")
+	if _combat_target != null and _combat_target.current_health <= 0.0:
+		if is_stunned() or is_bleeding() or is_slowed():
+			cleanse_all()
+		return
 	update_status_effects(delta)
 
 ## Actualiza temporizadores de estados alterados y resuelve ticks de sangrado cada 1.0s.
@@ -116,6 +129,9 @@ func _execute_bleed_tick() -> void:
 	if _combat_target == null:
 		_combat_target = get_parent().get_node_or_null("CombatTarget")
 	if _combat_target == null or _bleed_source_stats == null:
+		return
+	if _combat_target.current_health <= 0.0:
+		cleanse_all()
 		return
 
 	var victim_stats := _combat_target.get_stats()

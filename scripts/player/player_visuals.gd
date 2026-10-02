@@ -36,19 +36,19 @@ func _ready() -> void:
 	if character_model:
 		GhostSlashFXScript.prewarm(get_tree(), character_model)
 
-func configure_visuals(peer_id: int, is_local: bool) -> void:
+func configure_visuals(peer_id: int, is_local: bool, lvl: int = 1) -> void:
 	if health_bar:
 		if is_local:
 			health_bar.set_entity_name("TÚ (ID: %d)" % peer_id, COLOR_LOCAL_LABEL)
 		else:
-			health_bar.set_entity_name("RIVAL (ID: %d)" % peer_id, COLOR_RIVAL_LABEL)
+			health_bar.set_entity_name("RIVAL (ID: %d - Lvl %d)" % [peer_id, lvl], COLOR_RIVAL_LABEL)
 			_apply_rival_tint()
 	elif label:
 		if is_local:
 			label.text = "TÚ (ID: %d)" % peer_id
 			label.modulate = COLOR_LOCAL_LABEL
 		else:
-			label.text = "RIVAL (ID: %d)" % peer_id
+			label.text = "RIVAL (ID: %d - Lvl %d)" % [peer_id, lvl]
 			label.modulate = COLOR_RIVAL_LABEL
 			_apply_rival_tint()
 

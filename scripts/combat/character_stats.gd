@@ -247,7 +247,91 @@ func restore_mana(amount: int) -> int:
 # Métodos de fábrica e importación desde Diccionario / JSON
 # ==============================================================================
 
-## Carga atributos y modificadores desde un Dictionary (por ejemplo, proveniente de JSON).
+## Serializa todos los atributos y modificadores a un Dictionary para sincronización de red y persistencia.
+func to_dictionary() -> Dictionary:
+	return {
+		"character_name": character_name,
+		"level": level,
+		"weight_kg": weight_kg,
+		"base_str": base_str,
+		"base_agi": base_agi,
+		"base_int": base_int,
+		"base_vit": base_vit,
+		"bonus_str": bonus_str,
+		"bonus_agi": bonus_agi,
+		"bonus_int": bonus_int,
+		"bonus_vit": bonus_vit,
+		"equip_str_percent": equip_str_percent,
+		"equip_agi_percent": equip_agi_percent,
+		"equip_int_percent": equip_int_percent,
+		"equip_vit_percent": equip_vit_percent,
+		"base_max_hp": base_max_hp,
+		"base_max_mp": base_max_mp,
+		"base_attack": base_attack,
+		"base_defense": base_defense,
+		"base_accuracy": base_accuracy,
+		"base_evasion": base_evasion,
+		"base_crit_chance": base_crit_chance,
+		"base_crit_damage": base_crit_damage,
+		"base_atk_speed": base_atk_speed,
+		"equip_hp_bonus": equip_hp_bonus,
+		"equip_mp_bonus": equip_mp_bonus,
+		"equip_attack": equip_attack,
+		"equip_defense": equip_defense,
+		"equip_crit_chance": equip_crit_chance,
+		"equip_crit_damage": equip_crit_damage,
+		"equip_atk_speed": equip_atk_speed,
+		"equip_hp_percent": equip_hp_percent,
+		"equip_mp_percent": equip_mp_percent,
+		"equip_attack_percent": equip_attack_percent,
+		"equip_defense_percent": equip_defense_percent,
+		"armor_pen_flat": armor_pen_flat,
+		"armor_pen_percent": armor_pen_percent,
+		"true_damage_percent": true_damage_percent,
+		"execute_damage_multiplier": execute_damage_multiplier,
+		"execute_threshold_factor": execute_threshold_factor,
+		"enemy_max_hp_damage_percent": enemy_max_hp_damage_percent,
+		"physical_damage_bonus": physical_damage_bonus,
+		"aoe_radius": aoe_radius,
+		"aoe_damage_percent": aoe_damage_percent,
+		"block_chance": block_chance,
+		"block_value_percent": block_value_percent,
+		"thorns_percent": thorns_percent,
+		"tenacity_percent": tenacity_percent,
+		"damage_reduction_percent": damage_reduction_percent,
+		"crit_avoidance_percent": crit_avoidance_percent,
+		"anti_armor_pen_percent": anti_armor_pen_percent,
+		"anti_armor_pen_flat": anti_armor_pen_flat,
+		"lifesteal_percent": lifesteal_percent,
+		"mana_steal_percent": mana_steal_percent,
+		"move_speed": move_speed,
+		"cooldown_reduction": cooldown_reduction,
+		"double_strike_chance": double_strike_chance,
+		"triple_strike_chance": triple_strike_chance,
+		"stun_chance": stun_chance,
+		"stun_duration": stun_duration,
+		"bleed_chance": bleed_chance,
+		"bleed_duration": bleed_duration,
+		"bleed_flat": bleed_flat,
+		"bleed_percent": bleed_percent,
+		"slow_chance": slow_chance,
+		"slow_duration": slow_duration,
+		"slow_move_percent": slow_move_percent,
+		"slow_attack_percent": slow_attack_percent,
+		"current_hp": current_hp,
+		"max_hp": max_hp,
+		"current_mp": current_mp,
+		"max_mp": max_mp,
+		"attack": attack,
+		"defense": defense,
+		"accuracy": accuracy,
+		"evasion": evasion,
+		"attack_speed": attack_speed,
+		"crit_chance": crit_chance,
+		"crit_damage": crit_damage
+	}
+
+## Carga atributos y modificadores desde un Dictionary (por ejemplo, proveniente de JSON o sincronización de red).
 func load_from_dictionary(dict: Dictionary) -> void:
 	if dict.has("character_name"): character_name = str(dict["character_name"])
 	if dict.has("level"): level = int(dict["level"])
@@ -256,10 +340,29 @@ func load_from_dictionary(dict: Dictionary) -> void:
 	if dict.has("base_agi"): base_agi = int(dict["base_agi"])
 	if dict.has("base_int"): base_int = int(dict["base_int"])
 	if dict.has("base_vit"): base_vit = int(dict["base_vit"])
+	if dict.has("bonus_str"): bonus_str = int(dict["bonus_str"])
+	if dict.has("bonus_agi"): bonus_agi = int(dict["bonus_agi"])
+	if dict.has("bonus_int"): bonus_int = int(dict["bonus_int"])
+	if dict.has("bonus_vit"): bonus_vit = int(dict["bonus_vit"])
+	if dict.has("equip_str_percent"): equip_str_percent = float(dict["equip_str_percent"])
+	if dict.has("equip_agi_percent"): equip_agi_percent = float(dict["equip_agi_percent"])
+	if dict.has("equip_int_percent"): equip_int_percent = float(dict["equip_int_percent"])
+	if dict.has("equip_vit_percent"): equip_vit_percent = float(dict["equip_vit_percent"])
 	if dict.has("base_attack"): base_attack = float(dict["base_attack"])
 	if dict.has("base_defense"): base_defense = float(dict["base_defense"])
 	if dict.has("base_max_hp"): base_max_hp = float(dict["base_max_hp"])
 	if dict.has("base_max_mp"): base_max_mp = float(dict["base_max_mp"])
+	if dict.has("equip_hp_bonus"): equip_hp_bonus = float(dict["equip_hp_bonus"])
+	if dict.has("equip_mp_bonus"): equip_mp_bonus = float(dict["equip_mp_bonus"])
+	if dict.has("equip_attack"): equip_attack = float(dict["equip_attack"])
+	if dict.has("equip_defense"): equip_defense = float(dict["equip_defense"])
+	if dict.has("equip_crit_chance"): equip_crit_chance = float(dict["equip_crit_chance"])
+	if dict.has("equip_crit_damage"): equip_crit_damage = float(dict["equip_crit_damage"])
+	if dict.has("equip_atk_speed"): equip_atk_speed = float(dict["equip_atk_speed"])
+	if dict.has("equip_hp_percent"): equip_hp_percent = float(dict["equip_hp_percent"])
+	if dict.has("equip_mp_percent"): equip_mp_percent = float(dict["equip_mp_percent"])
+	if dict.has("equip_attack_percent"): equip_attack_percent = float(dict["equip_attack_percent"])
+	if dict.has("equip_defense_percent"): equip_defense_percent = float(dict["equip_defense_percent"])
 	if dict.has("base_accuracy"): base_accuracy = float(dict["base_accuracy"])
 	if dict.has("base_evasion"): base_evasion = float(dict["base_evasion"])
 	if dict.has("base_crit_chance"): base_crit_chance = float(dict["base_crit_chance"])
@@ -298,7 +401,13 @@ func load_from_dictionary(dict: Dictionary) -> void:
 	if dict.has("slow_duration"): slow_duration = float(dict["slow_duration"])
 	if dict.has("slow_move_percent"): slow_move_percent = float(dict["slow_move_percent"])
 	if dict.has("slow_attack_percent"): slow_attack_percent = float(dict["slow_attack_percent"])
-	recalculate_stats(true)
+
+	var reset_vitals := not dict.has("current_hp")
+	recalculate_stats(reset_vitals)
+	if dict.has("current_hp"):
+		current_hp = clampi(int(dict["current_hp"]), 0, max_hp)
+	if dict.has("current_mp"):
+		current_mp = clampi(int(dict["current_mp"]), 0, max_mp)
 
 ## Crea una instancia de CharacterStats inicializada desde una sección específica de combat_config.json
 static func create_from_config(category: String, default_name: String = "") -> CharacterStats:

@@ -13,9 +13,9 @@
     }
   },
   "damage_numbers": {
-    "font_size_normal": 36,
-    "font_size_crit": 44,
-    "outline_size": 10,
+    "font_size_normal": 20,
+    "font_size_crit": 26,
+    "outline_size": 4,
     "float_distance_y": 1.0,
     "float_duration": 0.75,
     "fade_delay": 0.47,

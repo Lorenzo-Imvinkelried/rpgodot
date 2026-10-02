@@ -18,6 +18,7 @@ const COLOR_STATUS := Color(1.0, 0.84, 0.25, 1.0) # Amarillo / CC
 
 var _label_2d: Label = null
 var _is_floating_2d: bool = false
+var _pop_multiplier: float = 1.0
 
 func _exit_tree() -> void:
 	if _label_2d != null and is_instance_valid(_label_2d):
@@ -42,6 +43,14 @@ func _process(_delta: float) -> void:
 	if cam.is_position_behind(world_pos):
 		_label_2d.visible = false
 		return
+
+	var dist := cam.global_position.distance_to(world_pos)
+	# Perspectiva 3D real: tamaño decrece con la distancia en lugar de ser estático en pantalla
+	var ref_dist := 7.0
+	var dist_scale := clampf(ref_dist / maxf(2.0, dist), 0.35, 1.15)
+	var final_scale := dist_scale * _pop_multiplier
+	_label_2d.scale = Vector2(final_scale, final_scale)
+	_label_2d.pivot_offset = _label_2d.size * 0.5
 
 	var screen_pos := cam.unproject_position(world_pos)
 	_label_2d.visible = true
@@ -130,9 +139,9 @@ func setup(
 	# 1. Pop de escala inicial en la etiqueta 2D
 	if _label_2d != null:
 		var scale_tween := create_tween()
-		var pop_scale := Vector2(1.35, 1.35) if is_crit else Vector2(1.2, 1.2)
-		scale_tween.tween_property(_label_2d, "scale", pop_scale, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		scale_tween.tween_property(_label_2d, "scale", Vector2.ONE, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		var start_pop := 1.35 if is_crit else 1.20
+		_pop_multiplier = start_pop
+		scale_tween.tween_property(self, "_pop_multiplier", 1.0, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	# 2. Desplazamiento flotante hacia arriba
 	tween.tween_property(self, "global_position", target_pos, float_dur).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)

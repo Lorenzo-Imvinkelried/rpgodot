@@ -22,6 +22,7 @@ var _bound_stats: CharacterStats = null
 var _bound_equipment: EquipmentController = null
 var _bound_inventory: InventoryController = null
 var _bound_target: CombatTarget = null
+var _bound_progression: ProgressionController = null
 
 var is_inspect_mode: bool = false
 
@@ -78,18 +79,32 @@ func _build_equipment_slots() -> void:
 		_slot_ui_map[s_type] = slot_ui
 
 ## Vincula la hoja a las estadísticas y componentes del jugador local
-func bind_character(stats: CharacterStats, equipment: EquipmentController, inventory: InventoryController, target: CombatTarget = null) -> void:
+func bind_character(stats: CharacterStats, equipment: EquipmentController, inventory: InventoryController, target: CombatTarget = null, progression: ProgressionController = null) -> void:
 	_bound_stats = stats
 	_bound_equipment = equipment
 	_bound_inventory = inventory
 	_bound_target = target
+	_bound_progression = progression
+	if _bound_progression == null and _bound_target and _bound_target.get_parent():
+		_bound_progression = _bound_target.get_parent().get_node_or_null("ProgressionController") as ProgressionController
+
 	is_inspect_mode = false
 
 	if title_label:
 		title_label.text = "👤 Personaje & Equipamiento"
 
-	if _bound_equipment:
+	if _bound_equipment and not _bound_equipment.equipment_changed.is_connected(_on_equipment_changed):
 		_bound_equipment.equipment_changed.connect(_on_equipment_changed)
+
+	if _bound_progression:
+		if not _bound_progression.experience_gained.is_connected(_on_progression_exp_gained):
+			_bound_progression.experience_gained.connect(_on_progression_exp_gained)
+		if not _bound_progression.level_up.is_connected(_on_progression_level_up):
+			_bound_progression.level_up.connect(_on_progression_level_up)
+
+	if _bound_target:
+		if not _bound_target.health_changed.is_connected(_on_target_health_changed):
+			_bound_target.health_changed.connect(_on_target_health_changed)
 
 	_refresh_all()
 
@@ -111,6 +126,7 @@ func inspect_target(target_node: Node) -> void:
 		_bound_stats = ct.get_stats()
 		_bound_equipment = target_node.get_node_or_null("EquipmentController") as EquipmentController
 		_bound_inventory = null
+		_bound_progression = target_node.get_node_or_null("ProgressionController") as ProgressionController
 
 		if title_label:
 			var lvl := _bound_stats.level if _bound_stats else 1
@@ -160,11 +176,12 @@ func _refresh_stats_display() -> void:
 
 	_add_stat_header("NIVEL Y PROGRESO")
 	_add_stat_line("Nivel de Personaje", "%d" % _bound_stats.level)
-	if _bound_target and _bound_target.get_parent():
-		var prog := _bound_target.get_parent().get_node_or_null("ProgressionController") as Node
-		if prog and "current_exp" in prog and "xp_required" in prog:
-			var ratio := (float(prog.current_exp) / float(maxi(1, int(prog.xp_required)))) * 100.0
-			_add_stat_line("Experiencia", "%d / %d (%.1f%%)" % [int(prog.current_exp), int(prog.xp_required), ratio])
+	var prog := _bound_progression
+	if prog == null and _bound_target and _bound_target.get_parent():
+		prog = _bound_target.get_parent().get_node_or_null("ProgressionController") as ProgressionController
+	if prog and "current_exp" in prog and "xp_required" in prog:
+		var ratio := (float(prog.current_exp) / float(maxi(1, int(prog.xp_required)))) * 100.0
+		_add_stat_line("Experiencia", "%d / %d (%.1f%%)" % [int(prog.current_exp), int(prog.xp_required), ratio])
 
 	_add_stat_header("ATRIBUTOS BASE")
 	_add_stat_line("Fuerza (STR)", "%d (+%d)" % [_bound_stats.base_str, _bound_stats.bonus_str])
@@ -234,6 +251,18 @@ func _refresh_equipment_slots() -> void:
 
 func _on_equipment_changed(_slot: ItemData.EquipmentSlot, _item: ItemData) -> void:
 	_refresh_all()
+
+func _on_progression_exp_gained(_amount: int, _curr: int, _req: int) -> void:
+	if visible:
+		_refresh_stats_display()
+
+func _on_progression_level_up(_new_lvl: int, _gains: Dictionary) -> void:
+	if visible:
+		_refresh_all()
+
+func _on_target_health_changed(_curr: float, _max: float) -> void:
+	if visible:
+		_refresh_stats_display()
 
 func _on_unequip_requested(slot: ItemData.EquipmentSlot) -> void:
 	if is_inspect_mode or _bound_equipment == null:

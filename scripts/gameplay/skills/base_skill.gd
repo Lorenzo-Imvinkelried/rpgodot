@@ -98,11 +98,14 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 		return _execute_single(caster, target, caster_stats)
 
 func _execute_single(caster: Node3D, target: Node3D, caster_stats: CharacterStats) -> Dictionary:
-	if target == null or not is_instance_valid(target):
+	if target == null or not is_instance_valid(target) or target == caster:
+		return { "success": false }
+
+	if target.has_method("is_alive") and not target.is_alive():
 		return { "success": false }
 
 	var target_ct := target.get_node_or_null("CombatTarget") as CombatTarget
-	if target_ct == null:
+	if target_ct == null or target_ct.current_health <= 0.0:
 		return { "success": false }
 
 	var target_stats := target_ct.get_stats()
@@ -126,7 +129,7 @@ func _execute_single(caster: Node3D, target: Node3D, caster_stats: CharacterStat
 		target.aggro_pool.add_threat(caster, float(dmg_result.total_damage) * threat_multiplier)
 
 	# Efectos de estado
-	_apply_status_effect(target)
+	_apply_status_effect(target, caster, caster_stats)
 
 	return { "success": true, "damage": dmg_result.total_damage, "is_crit": dmg_result.is_crit }
 
@@ -138,21 +141,37 @@ func _execute_aoe(caster: Node3D, caster_stats: CharacterStats, tree: SceneTree)
 
 	var hits: int = 0
 	var targets := tree.get_nodes_in_group("targetable")
+	var processed_entities: Array[Node3D] = []
+
 	for node in targets:
-		if node == caster or node == caster.get_node_or_null("CombatTarget"):
+		if node == caster or (caster.has_node("CombatTarget") and node == caster.get_node_or_null("CombatTarget")):
 			continue
 		var target_node: Node3D = node as Node3D
 		if target_node == null and node.get_parent() is Node3D:
 			target_node = node.get_parent() as Node3D
-		if target_node and is_instance_valid(target_node):
-			var dist := caster.global_position.distance_to(target_node.global_position)
-			if dist <= aoe_radius:
-				_execute_single(caster, target_node, caster_stats)
-				hits += 1
+		if target_node == null or not is_instance_valid(target_node):
+			continue
+		if target_node == caster:
+			continue
+		if processed_entities.has(target_node):
+			continue
+
+		# Comprobar que el objetivo esté vivo y con vida positiva
+		if target_node.has_method("is_alive") and not target_node.is_alive():
+			continue
+		var target_ct := target_node.get_node_or_null("CombatTarget") as CombatTarget
+		if target_ct and target_ct.current_health <= 0.0:
+			continue
+
+		var dist := caster.global_position.distance_to(target_node.global_position)
+		if dist <= aoe_radius:
+			processed_entities.append(target_node)
+			_execute_single(caster, target_node, caster_stats)
+			hits += 1
 
 	return { "success": true, "hits": hits }
 
-func _apply_status_effect(target: Node3D) -> void:
+func _apply_status_effect(target: Node3D, caster: Node3D = null, caster_stats: CharacterStats = null) -> void:
 	if effect_type == "" or target == null:
 		return
 	var status_ctrl := target.get_node_or_null("StatusEffectController")
@@ -160,8 +179,15 @@ func _apply_status_effect(target: Node3D) -> void:
 		return
 
 	if effect_type == "slow" and status_ctrl.has_method("apply_slow"):
-		status_ctrl.apply_slow(effect_value, effect_duration)
+		# apply_slow(move_pct: float, attack_pct: float, duration: float)
+		status_ctrl.apply_slow(effect_value, effect_value * 0.5, effect_duration)
 	elif effect_type == "bleed" and status_ctrl.has_method("apply_bleed"):
-		status_ctrl.apply_bleed(int(effect_value), effect_duration)
+		# apply_bleed(source_stats: CharacterStats, duration: float, flat_damage: int, percent_damage: float, source_node: Node)
+		var atk_stats := caster_stats
+		if atk_stats == null and caster != null:
+			var ct := caster.get_node_or_null("CombatTarget") as CombatTarget
+			if ct:
+				atk_stats = ct.get_stats()
+		status_ctrl.apply_bleed(atk_stats, effect_duration, int(effect_value), 15.0, caster)
 	elif effect_type == "stun" and status_ctrl.has_method("apply_stun"):
 		status_ctrl.apply_stun(effect_duration)

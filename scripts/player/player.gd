@@ -49,6 +49,11 @@ func _enter_tree() -> void:
 	set_multiplayer_authority(peer_id, true)
 	$MultiplayerSynchronizer.set_multiplayer_authority(peer_id)
 
+func _exit_tree() -> void:
+	if multiplayer.has_multiplayer_peer():
+		if multiplayer.peer_connected.is_connected(_on_peer_connected):
+			multiplayer.peer_connected.disconnect(_on_peer_connected)
+
 func _ready() -> void:
 	if config == null:
 		config = DEFAULT_CONFIG.duplicate()
@@ -57,10 +62,16 @@ func _ready() -> void:
 
 	var peer_id := name.to_int()
 	var is_local := is_multiplayer_authority()
-	visuals.configure_visuals(peer_id, is_local)
+	var initial_lvl := get_level()
+	visuals.configure_visuals(peer_id, is_local, initial_lvl)
 	camera_pivot.setup(is_local)
 	_prev_global_pos = global_position
 	visuals.update_animation(is_moving, 0.0)
+
+	if combat_target:
+		combat_target.target_name = "Jugador %d" % peer_id
+		if combat_target.get_stats():
+			combat_target.get_stats().character_name = "Jugador %d" % peer_id
 
 	if is_local:
 		var marker_scene := preload("res://scenes/player/ground_marker.tscn")
@@ -79,6 +90,14 @@ func _ready() -> void:
 			combat_controller.target_lost.connect(func():
 				if _target_indicator and _target_indicator.has_method("clear_target"):
 					_target_indicator.clear_target()
+			)
+
+		if combat_target:
+			combat_target.combat_entered.connect(func(_instigator: Node):
+				_spawn_floating_text("⚔️ Entrando en combate")
+			)
+			combat_target.combat_exited.connect(func():
+				_spawn_floating_text("🕊️ Saliendo de combate")
 			)
 
 	if combat_target:
@@ -112,6 +131,24 @@ func _ready() -> void:
 	progression_controller.experience_gained.connect(_on_experience_gained)
 	progression_controller.level_up.connect(_on_level_up)
 
+	if equipment_controller:
+		equipment_controller.equipment_changed.connect(_on_equipment_changed)
+
+	# Sincronización en red de estadísticas al iniciar
+	if multiplayer.has_multiplayer_peer():
+		if not multiplayer.peer_connected.is_connected(_on_peer_connected):
+			multiplayer.peer_connected.connect(_on_peer_connected)
+
+		if is_local:
+			sync_stats_to_network()
+		else:
+			get_tree().create_timer(0.1).timeout.connect(func():
+				if is_inside_tree() and multiplayer.has_multiplayer_peer():
+					var auth_id := get_multiplayer_authority()
+					if auth_id > 0 and auth_id != multiplayer.get_unique_id():
+						rpc_id(auth_id, "rpc_request_stats_sync")
+			)
+
 func _setup_starter_inventory() -> void:
 	if inventory_controller:
 		inventory_controller.add_item(ItemData.create_potion("Poción de Salud", 60.0, 0.0, 10))
@@ -141,6 +178,77 @@ func _on_experience_gained(amount: int, _curr: int, _req: int) -> void:
 
 func _on_level_up(new_lvl: int, _gains: Dictionary) -> void:
 	_spawn_floating_text("¡NIVEL %d!" % new_lvl)
+	if is_multiplayer_authority():
+		sync_stats_to_network()
+
+func _on_equipment_changed(_slot: ItemData.EquipmentSlot, _item: ItemData) -> void:
+	if is_multiplayer_authority():
+		sync_stats_to_network()
+
+## Empaqueta las estadísticas y nivel del jugador para difusión por red.
+func get_synced_stats_dict() -> Dictionary:
+	var stats_dict: Dictionary = {}
+	if combat_target and combat_target.get_stats():
+		stats_dict = combat_target.get_stats().to_dictionary()
+	if progression_controller:
+		stats_dict["current_level"] = progression_controller.current_level
+		stats_dict["current_exp"] = progression_controller.current_exp
+		stats_dict["xp_required"] = progression_controller.xp_required
+	if combat_target:
+		stats_dict["current_health"] = combat_target.current_health
+		stats_dict["max_health"] = combat_target.max_health
+	return stats_dict
+
+## Difunde las estadísticas de esta entidad a todos los pares conectados.
+func sync_stats_to_network() -> void:
+	if is_inside_tree() and multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+		if is_multiplayer_authority():
+			var dict := get_synced_stats_dict()
+			rpc("rpc_sync_player_stats", dict)
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_sync_player_stats(dict: Dictionary) -> void:
+	apply_synced_stats_dict(dict)
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_request_stats_sync() -> void:
+	if is_multiplayer_authority():
+		var sender_id := multiplayer.get_remote_sender_id()
+		if sender_id > 0:
+			rpc_id(sender_id, "rpc_sync_player_stats", get_synced_stats_dict())
+
+## Aplica las estadísticas recibidas sobre los componentes locales del personaje remoto.
+func apply_synced_stats_dict(dict: Dictionary) -> void:
+	if dict.is_empty():
+		return
+	if combat_target:
+		combat_target.update_stats_from_dict(dict)
+	if progression_controller:
+		if dict.has("level"):
+			progression_controller.current_level = int(dict["level"])
+		elif dict.has("current_level"):
+			progression_controller.current_level = int(dict["current_level"])
+		if dict.has("current_exp"):
+			progression_controller.current_exp = int(dict["current_exp"])
+		if dict.has("xp_required"):
+			progression_controller.xp_required = int(dict["xp_required"])
+
+	var lvl := int(dict.get("level", dict.get("current_level", 1)))
+	var peer_id := name.to_int()
+	if visuals and visuals.health_bar:
+		var is_local := is_multiplayer_authority()
+		if not is_local:
+			var rival_title := "RIVAL (ID: %d - Lvl %d)" % [peer_id, lvl]
+			visuals.health_bar.set_entity_name(rival_title, PlayerVisuals.COLOR_RIVAL_LABEL)
+		if combat_target:
+			visuals.health_bar.set_health(combat_target.current_health, combat_target.max_health, false)
+
+func _on_peer_connected(new_peer_id: int) -> void:
+	if is_multiplayer_authority():
+		get_tree().create_timer(0.15).timeout.connect(func():
+			if is_inside_tree() and multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+				rpc_id(new_peer_id, "rpc_sync_player_stats", get_synced_stats_dict())
+		)
 
 func _spawn_floating_text(text_msg: String) -> void:
 	if combat_target and combat_target.has_method("_spawn_damage_number"):
@@ -242,6 +350,15 @@ func _process(delta: float) -> void:
 				speed = config.forward_speed
 
 		visuals.update_animation(is_moving, speed)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not is_multiplayer_authority():
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_TAB:
+			if combat_controller:
+				combat_controller.cycle_target()
+			get_viewport().set_input_as_handled()
 
 func _physics_process(delta: float) -> void:
 	if not is_multiplayer_authority():

@@ -126,6 +126,18 @@ func get_stats() -> CharacterStats:
 		_init_stats()
 	return stats
 
+## Actualiza y recalcula las estadísticas desde un diccionario serializado recibido por red.
+func update_stats_from_dict(dict: Dictionary) -> void:
+	if stats == null:
+		_init_stats()
+	stats.load_from_dictionary(dict)
+	max_health = float(stats.max_hp)
+	if dict.has("current_health"):
+		current_health = float(dict["current_health"])
+	else:
+		current_health = float(stats.current_hp)
+	health_changed.emit(current_health, max_health)
+
 ## Procesa un resultado de combate (DamageResult) calculado por CombatCalculator.
 func take_combat_result(result: DamageResult, hit_position: Vector3, attacker: Node) -> void:
 	if attacker:
@@ -270,6 +282,22 @@ func heal(amount: float) -> void:
 		current_health = float(stats.current_hp)
 	else:
 		current_health = minf(max_health, current_health + amount)
+	health_changed.emit(current_health, max_health)
+	_broadcast_health_if_network()
+
+func _broadcast_health_if_network() -> void:
+	if is_inside_tree() and multiplayer.has_multiplayer_peer() and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+		var p := get_parent()
+		if p is CharacterBody3D and (p as CharacterBody3D).is_multiplayer_authority():
+			rpc("rpc_sync_health", current_health, max_health)
+
+@rpc("any_peer", "call_remote", "reliable")
+func rpc_sync_health(curr: float, max_h: float) -> void:
+	current_health = curr
+	max_health = max_h
+	if stats:
+		stats.current_hp = int(round(curr))
+		stats.max_hp = int(round(max_h))
 	health_changed.emit(current_health, max_health)
 
 func _spawn_damage_number(

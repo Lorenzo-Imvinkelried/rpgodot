@@ -147,9 +147,13 @@ func init_from_blueprint(bp: MobBlueprint, p_level: int = -1, p_is_boss: bool = 
 		scale = bp.scale
 
 	if health_bar:
+		if mIsBoss:
+			health_bar.position.y = 5.2
 		var name_col := Color(1.0, 0.3, 0.3) if mIsBoss else (Color(1.0, 0.65, 0.2) if mStance == MobBlueprint.Stance.VIOLENT else Color(0.9, 0.85, 0.5))
 		health_bar.set_entity_name(stats.character_name, name_col)
 		health_bar.set_health(combat_target.current_health, combat_target.max_health, false)
+		if health_bar.has_method("set_visible_ui"):
+			health_bar.set_visible_ui(true)
 
 ## Reinicia la entidad para su reutilización desde el Object Pool (Sección 5.1)
 func reset(start_pos: Vector3, start_with_fade_in: bool = true, p_level: int = -1) -> void:
@@ -167,13 +171,20 @@ func reset(start_pos: Vector3, start_with_fade_in: bool = true, p_level: int = -
 	if mBlueprint:
 		mXpReward = mBlueprint.get_scaled_xp(p_level, mIsBoss)
 		var stats := mBlueprint.create_character_stats(p_level, mIsBoss)
+		combat_target.target_name = stats.character_name
 		combat_target.stats = stats
 		combat_target.max_health = float(stats.max_hp)
 		combat_target.current_health = float(stats.max_hp)
 		combat_target.is_invulnerable = false
 
 	if health_bar and combat_target:
+		if mIsBoss:
+			health_bar.position.y = 5.2
+		var name_col := Color(1.0, 0.3, 0.3) if mIsBoss else (Color(1.0, 0.65, 0.2) if mStance == MobBlueprint.Stance.VIOLENT else Color(0.9, 0.85, 0.5))
+		health_bar.set_entity_name(combat_target.target_name, name_col)
 		health_bar.set_health(combat_target.current_health, combat_target.max_health, false)
+		if health_bar.has_method("set_visible_ui"):
+			health_bar.set_visible_ui(true)
 
 	if status_controller:
 		status_controller.cleanse_all()
@@ -183,6 +194,11 @@ func reset(start_pos: Vector3, start_with_fade_in: bool = true, p_level: int = -
 	set_physics_process(true)
 	if collision_shape:
 		collision_shape.disabled = false
+
+	if not is_in_group("targetable"):
+		add_to_group("targetable")
+	if combat_target and not combat_target.is_in_group("targetable"):
+		combat_target.add_to_group("targetable")
 
 	if start_with_fade_in:
 		_start_fade_in()
@@ -655,6 +671,16 @@ func _on_combat_target_died() -> void:
 
 	if collision_shape:
 		collision_shape.set_deferred("disabled", true)
+
+	if is_in_group("targetable"):
+		remove_from_group("targetable")
+	if combat_target and combat_target.is_in_group("targetable"):
+		combat_target.remove_from_group("targetable")
+
+	if health_bar and health_bar.has_method("set_visible_ui"):
+		health_bar.set_visible_ui(false)
+	if status_controller:
+		status_controller.cleanse_all()
 
 	mob_died.emit(self, mAggroTarget)
 

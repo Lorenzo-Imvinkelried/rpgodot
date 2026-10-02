@@ -74,11 +74,6 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	if combat_ctrl and combat_ctrl.has_method("_can_broadcast_rpc") and combat_ctrl._can_broadcast_rpc():
 		combat_ctrl.rpc("rpc_play_attack", skill_speed_scale)
 
-	# 5. [LUNGE PROCEDURAL]: Impulso cinético hacia adelante
-	if caster.has_method("apply_lunge"):
-		caster.apply_lunge(forward_dir, 6.5, 0.14)
-	elif caster is CharacterBody3D and forward_dir.length_squared() > 0.001:
-		caster.velocity += forward_dir * 5.0
 
 	# 6. Sincronización y daño si hay objetivo
 	if target != null and is_instance_valid(target):

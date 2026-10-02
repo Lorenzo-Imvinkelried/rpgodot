@@ -97,14 +97,25 @@ func get_effective_attack_range(target_node: Node3D = null) -> float:
 	return base_range + target_radius
 
 ## Determina si el objetivo sigue con vida y activo para combate
-static func is_target_alive(tgt: Node3D) -> bool:
+static func is_target_alive(tgt: Node) -> bool:
 	if not is_instance_valid(tgt) or tgt.is_queued_for_deletion():
 		return false
 	if tgt.has_method("is_alive") and not tgt.is_alive():
 		return false
+	if tgt.has_method("is_removable") and tgt.is_removable():
+		return false
 	var ct := tgt.get_node_or_null("CombatTarget") as CombatTarget
+	if ct == null and tgt is CombatTarget:
+		ct = tgt as CombatTarget
+	if ct == null:
+		for child in tgt.get_children():
+			if child is CombatTarget:
+				ct = child as CombatTarget
+				break
 	if ct:
 		if ct.current_health <= 0.0:
+			return false
+		if ct.stats and ct.stats.current_hp <= 0:
 			return false
 		if ct.has_method("is_dead") and ct.is_dead():
 			return false
@@ -201,6 +212,79 @@ func attack_target(new_target: Node3D = null) -> void:
 ## Establece objetivo e inicia aproximación de combate (retrocompatibilidad).
 func set_target(new_target: Node3D) -> void:
 	attack_target(new_target)
+
+## Selecciona el objetivo enemigo más cercano o cicla entre los disponibles dentro del rango (Tab targeting).
+func cycle_target(max_distance: float = 30.0) -> Node3D:
+	var p := _get_parent_body()
+	if p == null or not is_inside_tree():
+		return null
+
+	var tree := get_tree()
+	if tree == null:
+		return null
+
+	var candidates: Array[Node3D] = []
+	var targetable_nodes := tree.get_nodes_in_group("targetable")
+	var processed: Array[Node3D] = []
+
+	for node in targetable_nodes:
+		var entity: Node3D = null
+		if node is Node3D:
+			entity = node
+		elif node.get_parent() is Node3D:
+			entity = node.get_parent() as Node3D
+
+		if entity == null or not is_instance_valid(entity) or entity == p:
+			continue
+		if processed.has(entity):
+			continue
+		processed.append(entity)
+
+		if not is_target_alive(entity):
+			continue
+
+		var dist := p.global_position.distance_to(entity.global_position)
+		if dist <= max_distance:
+			candidates.append(entity)
+
+	if candidates.is_empty():
+		return null
+
+	# Priorizar objetivos que están en combate con el jugador sobre el resto, y luego por distancia horizontal
+	candidates.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+		var a_hostile := _is_hostile_to_player(a, p)
+		var b_hostile := _is_hostile_to_player(b, p)
+		if a_hostile != b_hostile:
+			return a_hostile
+		return p.global_position.distance_squared_to(a.global_position) < p.global_position.distance_squared_to(b.global_position)
+	)
+
+	var next_target: Node3D = null
+	if current_target != null and candidates.has(current_target):
+		var curr_idx := candidates.find(current_target)
+		var next_idx := (curr_idx + 1) % candidates.size()
+		next_target = candidates[next_idx]
+	else:
+		next_target = candidates[0]
+
+	if next_target != null:
+		select_target(next_target)
+
+	return next_target
+
+static func _is_hostile_to_player(entity: Node3D, player: Node3D) -> bool:
+	if entity == null or player == null:
+		return false
+	if "mAggroTarget" in entity and entity.mAggroTarget == player:
+		return true
+	if "aggro_pool" in entity and entity.aggro_pool != null:
+		if entity.aggro_pool.has_method("has_threat") and entity.aggro_pool.has_threat(player):
+			return true
+	var ct := entity.get_node_or_null("CombatTarget") as CombatTarget
+	if ct != null:
+		if ct.is_in_combat and ct.last_attacker == player:
+			return true
+	return false
 
 func clear_target() -> void:
 	if current_target == null and state == State.IDLE:

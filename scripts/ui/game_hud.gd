@@ -80,15 +80,23 @@ func bind_player(player_node: Node) -> void:
 		if inv_ctrl:
 			inventory_panel.bind_inventory(inv_ctrl, tgt_ctrl)
 
+	var prog_ctrl := _bound_player.get_node_or_null("ProgressionController") as ProgressionController
+
 	if character_panel:
 		var inv_ctrl := _bound_player.get_node_or_null("InventoryController") as InventoryController
 		var eq_ctrl := _bound_player.get_node_or_null("EquipmentController") as EquipmentController
 		var tgt_ctrl := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
 		var stats := tgt_ctrl.get_stats() if tgt_ctrl else null
 		if stats and eq_ctrl:
-			character_panel.bind_character(stats, eq_ctrl, inv_ctrl, tgt_ctrl)
+			character_panel.bind_character(stats, eq_ctrl, inv_ctrl, tgt_ctrl, prog_ctrl)
 
-	var prog_ctrl := _bound_player.get_node_or_null("ProgressionController") as Node
+	var combat_tgt := _bound_player.get_node_or_null("CombatTarget") as CombatTarget
+	if combat_tgt:
+		if not combat_tgt.combat_entered.is_connected(_on_combat_entered):
+			combat_tgt.combat_entered.connect(_on_combat_entered)
+		if not combat_tgt.combat_exited.is_connected(_on_combat_exited):
+			combat_tgt.combat_exited.connect(_on_combat_exited)
+
 	if prog_ctrl:
 		if exp_bar and "current_exp" in prog_ctrl and "xp_required" in prog_ctrl:
 			exp_bar.set_experience(int(prog_ctrl.current_exp), int(prog_ctrl.xp_required))
@@ -180,6 +188,24 @@ func _on_hotbar_slot_activated(slot_idx: int) -> void:
 	if skill_ctrl.has_method("activate_slot"):
 		skill_ctrl.activate_slot(slot_idx, current_tgt, cast_bar, hotbar)
 
+func _on_combat_entered(_instigator: Node) -> void:
+	update_status("⚔️ Entrando en combate")
+	var timer := get_tree().create_timer(2.5)
+	if timer:
+		timer.timeout.connect(func():
+			if status_label and status_label.text == "⚔️ Entrando en combate":
+				update_status("")
+		)
+
+func _on_combat_exited() -> void:
+	update_status("🕊️ Saliendo de combate")
+	var timer := get_tree().create_timer(2.5)
+	if timer:
+		timer.timeout.connect(func():
+			if status_label and status_label.text == "🕊️ Saliendo de combate":
+				update_status("")
+		)
+
 func _on_skill_cast_failed(reason: String) -> void:
 	update_status(reason)
 	var timer := get_tree().create_timer(2.0)
@@ -196,6 +222,8 @@ func _on_stun_interrupt_cast(_dur: float) -> void:
 func _on_experience_gained(_amount: int, current_xp: int, max_xp: int) -> void:
 	if exp_bar:
 		exp_bar.set_experience(current_xp, max_xp)
+	if character_panel and character_panel.visible:
+		character_panel._refresh_stats_display()
 
 func _on_player_level_up(new_lvl: int, _gains: Dictionary) -> void:
 	if player_frame and _bound_player:
