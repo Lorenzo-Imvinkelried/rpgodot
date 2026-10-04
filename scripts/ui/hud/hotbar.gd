@@ -134,6 +134,9 @@ func _get_slot_key_name(slot_idx: int) -> String:
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_visible_in_tree():
 		return
+	var focus_owner := get_viewport().gui_get_focus_owner() if get_viewport() else null
+	if focus_owner is LineEdit or focus_owner is TextEdit:
+		return
 
 	if event is InputEventKey and event.pressed and not event.echo:
 		var slot_to_activate: int = -1

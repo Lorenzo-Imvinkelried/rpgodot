@@ -109,10 +109,6 @@ func _on_charge_impact(caster: Node3D, target: Node3D, caster_stats: CharacterSt
 	if target_ct == null or target_ct.current_health <= 0.0:
 		return
 
-	# Hit-stop pronunciado en el impacto
-	var visuals: Node = caster.get_node_or_null("Visuals")
-	if visuals and visuals.has_method("trigger_hit_stop"):
-		visuals.trigger_hit_stop(0.06)
 
 	# Reset de autoataque al colisionar
 	var combat_ctrl: Node = caster.get_node_or_null("CombatController")

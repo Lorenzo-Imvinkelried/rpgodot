@@ -24,6 +24,9 @@ func _ready() -> void:
 		skills_button.pressed.connect(_on_skills_pressed)
 
 func _unhandled_input(event: InputEvent) -> void:
+	var focus_owner := get_viewport().gui_get_focus_owner() if get_viewport() else null
+	if focus_owner is LineEdit or focus_owner is TextEdit:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_B:
 			_on_bag_pressed()

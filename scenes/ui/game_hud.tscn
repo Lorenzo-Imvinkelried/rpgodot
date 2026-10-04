@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://c6v2r8g7pm4yk"]
+[gd_scene load_steps=13 format=3 uid="uid://c6v2r8g7pm4yk"]
 
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="1_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud/player_frame.tscn" id="2_pf"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory/inventory_panel.tscn" id="8_inv"]
 [ext_resource type="PackedScene" path="res://scenes/ui/character/character_panel.tscn" id="9_cp"]
 [ext_resource type="PackedScene" path="res://scenes/ui/skills/skill_panel.tscn" id="10_sp"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/chat_command_bar.tscn" id="11_chat"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0.10, 0.12, 0.16, 0.88)
@@ -74,6 +75,18 @@ offset_left = -154.0
 offset_top = -58.0
 offset_right = -14.0
 offset_bottom = -16.0
+
+[node name="ChatCommandBar" parent="." instance=ExtResource("11_chat")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -54.0
+offset_right = 456.0
+offset_bottom = -18.0
+grow_vertical = 0
 
 [node name="InventoryPanel" parent="." instance=ExtResource("8_inv")]
 unique_name_in_owner = true

@@ -362,6 +362,9 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
 		return
+	var focus_owner := get_viewport().gui_get_focus_owner() if get_viewport() else null
+	if focus_owner is LineEdit or focus_owner is TextEdit:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_TAB:
 			if combat_controller:
@@ -389,6 +392,16 @@ func _apply_gravity(delta: float) -> void:
 func _process_movement(delta: float) -> void:
 	if config == null:
 		config = DEFAULT_CONFIG
+
+	# Bloquear movimiento si el jugador está escribiendo en el chat o consola
+	var focus_owner := get_viewport().gui_get_focus_owner() if get_viewport() else null
+	if focus_owner is LineEdit or focus_owner is TextEdit:
+		clear_click_move()
+		velocity.x = 0.0
+		velocity.z = 0.0
+		is_moving = false
+		move_and_slide()
+		return
 
 	# Bloqueo total si el jugador se encuentra aturdido (Stun)
 	var status_ctrl := get_node_or_null("StatusEffectController")

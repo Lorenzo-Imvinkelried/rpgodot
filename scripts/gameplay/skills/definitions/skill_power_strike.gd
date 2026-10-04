@@ -123,10 +123,6 @@ func _apply_delayed_strike(caster: Node3D, target: Node3D, caster_stats: Charact
 			if "state" in combat_ctrl and combat_ctrl.state == CombatController.State.IDLE:
 				combat_ctrl.state = CombatController.State.ATTACKING
 
-	# Hit-Stop pronunciado (0.045s) en el momento del impacto
-	var visuals: Node = caster.get_node_or_null("Visuals")
-	if visuals and visuals.has_method("trigger_hit_stop"):
-		visuals.trigger_hit_stop(0.045)
 
 	var target_ct := target.get_node_or_null("CombatTarget") as CombatTarget
 	if target_ct == null or target_ct.current_health <= 0.0:

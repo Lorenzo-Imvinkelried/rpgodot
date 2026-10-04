@@ -18,6 +18,7 @@ signal disconnect_requested
 @onready var skill_panel: SkillPanel = get_node_or_null("%SkillPanel")
 @onready var status_label: Label = %HUDStatus
 @onready var disconnect_button: Button = %DisconnectButton
+@onready var chat_command_bar = get_node_or_null("%ChatCommandBar")
 
 var _bound_player: Node = null
 var _last_synced_target: Node = null
@@ -66,6 +67,9 @@ func bind_player(player_node: Node) -> void:
 
 	if player_frame:
 		player_frame.bind_player(_bound_player)
+
+	if chat_command_bar:
+		chat_command_bar.bind_player(_bound_player)
 
 	if hotbar:
 		hotbar.bind_player(_bound_player)
@@ -277,7 +281,7 @@ func _on_player_level_up(new_lvl: int, _gains: Dictionary) -> void:
 		character_panel._refresh_all()
 
 func _disable_focus_recursive(node: Node) -> void:
-	if node is Control:
+	if node is Control and not (node is LineEdit):
 		node.focus_mode = Control.FOCUS_NONE
 	for child in node.get_children():
 		_disable_focus_recursive(child)

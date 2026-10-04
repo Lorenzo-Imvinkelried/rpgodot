@@ -98,22 +98,10 @@ func play_attack(custom_speed_scale: float = 1.0, _force_restart: bool = false) 
 	else:
 		anim_player.play(_anim_attack, blend_time)
 
-## Congela momentáneamente la animación de impacto (Hit-Stop / freeze frame) para sensación de impacto contundente.
-func trigger_hit_stop(duration: float = 0.045) -> void:
-	if anim_player == null or not is_inside_tree() or duration <= 0.0:
-		return
-	if not _is_in_hit_stop:
-		_pre_hit_stop_speed = anim_player.speed_scale
-		_is_in_hit_stop = true
-	anim_player.speed_scale = 0.0
-
-	var tree := get_tree()
-	if tree:
-		tree.create_timer(duration, true, false, true).timeout.connect(func():
-			if _is_in_hit_stop and anim_player != null:
-				anim_player.speed_scale = _pre_hit_stop_speed
-				_is_in_hit_stop = false
-		)
+## Congela momentáneamente la animación de impacto (Hit-Stop / freeze frame).
+## Deshabilitado para garantizar máxima fluidez y evitar sensación de lag al encadenar ataques rápidos.
+func trigger_hit_stop(_duration: float = 0.045) -> void:
+	return
 
 ## Cancela el estado de hit-stop y restablece la velocidad de animación previa.
 func cancel_hit_stop() -> void:
