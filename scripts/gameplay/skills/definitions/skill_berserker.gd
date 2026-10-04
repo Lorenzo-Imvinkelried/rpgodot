@@ -40,7 +40,7 @@ func can_cast(caster: Node3D, _target: Node3D, caster_stats: CharacterStats) -> 
 
 	return { "ok": true, "reason": "" }
 
-## Aplica el buff de Berserker al lanzador, activa efectos visuales y reinicia la cadencia de ataque.
+## Aplica el buff de Berserker al lanzador, activa efectos visuales y prepara el ataque inmediato.
 func execute(caster: Node3D, _target: Node3D, caster_stats: CharacterStats, tree: SceneTree = null) -> Dictionary:
 	if caster == null or not is_instance_valid(caster):
 		return { "success": false }
@@ -54,21 +54,26 @@ func execute(caster: Node3D, _target: Node3D, caster_stats: CharacterStats, tree
 
 	# 2. Aplicar estado alterado Berserker en el StatusEffectController del lanzador
 	var status_ctrl := caster.get_node_or_null("StatusEffectController") as StatusEffectController
+	if status_ctrl == null:
+		var ct := caster.get_node_or_null("CombatTarget")
+		if ct and ct.has_method("_get_status_controller"):
+			status_ctrl = ct._get_status_controller() as StatusEffectController
+
 	if status_ctrl and status_ctrl.has_method("apply_berserker"):
 		status_ctrl.apply_berserker(damage_boost_pct, attack_speed_boost_pct, buff_duration)
 
-	# 3. Animación de grito / impacto visual
+	# 3. Activación de aura visual de furia si está disponible
 	var visuals: Node = caster.get_node_or_null("Visuals")
-	if visuals and visuals.has_method("play_attack"):
-		visuals.play_attack(1.8)
+	if visuals and visuals.has_method("set_berserk_visual"):
+		visuals.set_berserk_visual(true)
 
 	# 4. Texto flotante indicador de buff
 	_spawn_berserk_feedback(caster, tree)
 
-	# 5. Resetear cooldown de ataque básico para aprovechar la velocidad inmediatamente
+	# 5. Preparar el auto-ataque para que pueda ejecutarse de inmediato con la nueva velocidad
 	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
-	if combat_ctrl and combat_ctrl.has_method("reset_attack_timer"):
-		combat_ctrl.reset_attack_timer()
+	if combat_ctrl and combat_ctrl.has_method("ready_next_attack"):
+		combat_ctrl.ready_next_attack()
 
 	return { "success": true, "duration": buff_duration }
 

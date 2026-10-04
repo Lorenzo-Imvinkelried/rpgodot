@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Resource" path="res://resources/player/default_player_config.tres" id="2_config"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/combat/combat_controller.gd" id="5_combat_ctrl"]
 [ext_resource type="Script" path="res://scripts/combat/combat_target.gd" id="6_combat_tgt"]
 [ext_resource type="PackedScene" path="res://scenes/combat/health_bar_3d.tscn" id="7_health_bar"]
+[ext_resource type="Script" path="res://scripts/combat/status_effect_controller.gd" id="8_status_ctrl"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
 radius = 0.4
@@ -58,3 +59,6 @@ script = ExtResource("5_combat_ctrl")
 [node name="CombatTarget" type="Node" parent="."]
 script = ExtResource("6_combat_tgt")
 target_name = "Player"
+
+[node name="StatusEffectController" type="Node" parent="."]
+script = ExtResource("8_status_ctrl")

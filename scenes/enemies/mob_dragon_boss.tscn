@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://mob_dragon_boss_8372"]
+[gd_scene load_steps=19 format=3 uid="uid://mob_dragon_boss_8372"]
 
 [ext_resource type="Script" path="res://scripts/gameplay/enemies/mob.gd" id="1_mob"]
 [ext_resource type="Script" path="res://scripts/combat/combat_target.gd" id="2_target"]
@@ -8,6 +8,9 @@
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_boss"]
 radius = 1.1
 height = 3.0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_boss_wings"]
+size = Vector3(5.2, 2.8, 3.5)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_scales"]
 resource_local_to_scene = true
@@ -76,6 +79,10 @@ is_boss = true
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
 shape = SubResource("CapsuleShape3D_boss")
+
+[node name="CollisionShape_Wings" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, -0.2)
+shape = SubResource("BoxShape3D_boss_wings")
 
 [node name="Visuals" type="Node3D" parent="."]
 

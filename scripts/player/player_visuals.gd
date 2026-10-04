@@ -22,6 +22,8 @@ const GhostSlashFXScript = preload("res://scripts/combat/ghost_slash_fx.gd")
 @onready var label: Label3D = get_node_or_null("Label3D")
 @onready var character_model: Node3D = get_node_or_null("CharacterModel")
 
+const COLOR_BERSERK_TINT := Color(1.35, 0.45, 0.45)
+
 var anim_player: AnimationPlayer = null
 var _anim_idle: String = ""
 var _anim_walk: String = ""
@@ -30,11 +32,14 @@ var _natural_walk_speed: float = 4.0
 var is_attacking_anim: bool = false
 var _is_in_hit_stop: bool = false
 var _pre_hit_stop_speed: float = 1.0
+var _is_berserk_tint: bool = false
+var _is_local_player: bool = true
 
 func _ready() -> void:
 	_setup_anim_player()
 	if character_model:
 		GhostSlashFXScript.prewarm(get_tree(), character_model)
+	_connect_status_effects()
 
 func configure_visuals(peer_id: int, is_local: bool, lvl: int = 1) -> void:
 	if health_bar:
@@ -227,3 +232,38 @@ func _tint_meshes_recursive(node: Node, color: Color) -> void:
 		node.material_override = mat
 	for child in node.get_children():
 		_tint_meshes_recursive(child, color)
+
+func _clear_mesh_override_recursive(node: Node) -> void:
+	if node is MeshInstance3D:
+		node.material_override = null
+	for child in node.get_children():
+		_clear_mesh_override_recursive(child)
+
+func set_berserk_visual(active: bool) -> void:
+	_is_berserk_tint = active
+	if character_model == null:
+		return
+	if active:
+		_tint_meshes_recursive(character_model, COLOR_BERSERK_TINT)
+	else:
+		if not _is_local_player:
+			_apply_rival_tint()
+		else:
+			_clear_mesh_override_recursive(character_model)
+
+func _connect_status_effects() -> void:
+	var p := get_parent()
+	if p == null:
+		return
+	var status_ctrl := p.get_node_or_null("StatusEffectController")
+	if status_ctrl:
+		if status_ctrl.has_signal("berserker_applied") and not status_ctrl.berserker_applied.is_connected(_on_berserker_applied):
+			status_ctrl.berserker_applied.connect(_on_berserker_applied)
+		if status_ctrl.has_signal("berserker_removed") and not status_ctrl.berserker_removed.is_connected(_on_berserker_removed):
+			status_ctrl.berserker_removed.connect(_on_berserker_removed)
+
+func _on_berserker_applied(_duration: float, _dmg_pct: float, _spd_pct: float) -> void:
+	set_berserk_visual(true)
+
+func _on_berserker_removed() -> void:
+	set_berserk_visual(false)

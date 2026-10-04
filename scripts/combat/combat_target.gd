@@ -104,6 +104,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	_init_stats()
 	add_to_group("targetable")
+	_get_status_controller()
 
 func _init_stats() -> void:
 	if stats != null:
@@ -352,5 +353,8 @@ func _get_status_controller() -> Node:
 	# Creación automática bajo demanda para máxima resiliencia
 	ctrl = StatusEffectControllerScript.new()
 	ctrl.name = "StatusEffectController"
-	p.add_child(ctrl)
+	if p.is_node_ready():
+		p.add_child(ctrl)
+	else:
+		p.add_child.call_deferred(ctrl)
 	return ctrl

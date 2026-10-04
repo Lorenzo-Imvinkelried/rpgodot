@@ -14,10 +14,13 @@ signal skills_toggle_requested
 
 func _ready() -> void:
 	if bag_button:
+		bag_button.focus_mode = Control.FOCUS_NONE
 		bag_button.pressed.connect(_on_bag_pressed)
 	if character_button:
+		character_button.focus_mode = Control.FOCUS_NONE
 		character_button.pressed.connect(_on_character_pressed)
 	if skills_button:
+		skills_button.focus_mode = Control.FOCUS_NONE
 		skills_button.pressed.connect(_on_skills_pressed)
 
 func _unhandled_input(event: InputEvent) -> void:

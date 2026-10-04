@@ -23,7 +23,10 @@ var _bound_player: Node = null
 var _last_synced_target: Node = null
 
 func _ready() -> void:
+	_disable_focus_recursive(self)
+
 	if disconnect_button:
+		disconnect_button.focus_mode = Control.FOCUS_NONE
 		disconnect_button.pressed.connect(_on_disconnect_pressed)
 
 	if quick_buttons:
@@ -91,6 +94,13 @@ func bind_player(player_node: Node) -> void:
 		if inv_ctrl:
 			inventory_panel.bind_inventory(inv_ctrl, tgt_ctrl)
 
+	var combat_ctrl := _bound_player.get_node_or_null("CombatController") as CombatController
+	if combat_ctrl:
+		if not combat_ctrl.target_acquired.is_connected(_on_combat_target_acquired):
+			combat_ctrl.target_acquired.connect(_on_combat_target_acquired)
+		if not combat_ctrl.target_lost.is_connected(_on_combat_target_lost):
+			combat_ctrl.target_lost.connect(_on_combat_target_lost)
+
 	var prog_ctrl := _bound_player.get_node_or_null("ProgressionController") as ProgressionController
 
 	if character_panel:
@@ -137,17 +147,28 @@ func _sync_target() -> void:
 		return
 
 	var combat_ctrl := _bound_player.get_node_or_null("CombatController") as CombatController
-	if combat_ctrl == null:
+	if combat_ctrl == null or target_frame == null:
 		return
 
 	var current_tgt: Node3D = combat_ctrl.current_target
-	if current_tgt != _last_synced_target:
-		_last_synced_target = current_tgt
-		if target_frame:
-			if is_instance_valid(current_tgt):
-				target_frame.set_target(current_tgt)
-			else:
-				target_frame.clear_target()
+	if is_instance_valid(current_tgt) and CombatController.is_target_alive(current_tgt):
+		if (not target_frame.visible) or (target_frame._current_target_node != current_tgt):
+			_last_synced_target = current_tgt
+			target_frame.set_target(current_tgt)
+	else:
+		if target_frame.visible or _last_synced_target != null:
+			_last_synced_target = null
+			target_frame.clear_target()
+
+func _on_combat_target_acquired(target_node: Node3D) -> void:
+	_last_synced_target = target_node
+	if target_frame and is_instance_valid(target_node) and CombatController.is_target_alive(target_node):
+		target_frame.set_target(target_node)
+
+func _on_combat_target_lost() -> void:
+	_last_synced_target = null
+	if target_frame:
+		target_frame.clear_target()
 
 ## Actualiza el texto informativo del estado de red.
 func update_status(text: String) -> void:
@@ -254,5 +275,11 @@ func _on_player_level_up(new_lvl: int, _gains: Dictionary) -> void:
 			player_frame.set_mana(float(stats.current_mp), float(stats.max_mp))
 	if character_panel and character_panel.visible:
 		character_panel._refresh_all()
+
+func _disable_focus_recursive(node: Node) -> void:
+	if node is Control:
+		node.focus_mode = Control.FOCUS_NONE
+	for child in node.get_children():
+		_disable_focus_recursive(child)
 
 

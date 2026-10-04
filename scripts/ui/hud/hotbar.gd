@@ -205,6 +205,7 @@ func _setup_default_slots() -> void:
 func _on_slot_gui_input(event: InputEvent, slot_idx: int) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		slot_activated.emit(slot_idx)
+		accept_event()
 
 func _on_stun_applied(_dur: float) -> void:
 	if stun_overlay:

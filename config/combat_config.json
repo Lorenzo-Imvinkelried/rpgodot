@@ -10,7 +10,7 @@
   "targets": {
     "player_max_health": 100.0,
     "player_respawn_delay": 3.0,
-    "dummy_max_health": 200.0,
+    "dummy_max_health": 2000000.0,
     "dummy_respawn_delay": 2.0,
     "crit_damage_threshold": 30.0
   },

@@ -37,6 +37,8 @@ var _berserk_time_left: float = 0.0
 var _berserk_damage_pct: float = 0.0
 var _berserk_attack_speed_pct: float = 0.0
 var _berserk_applied_stats: CharacterStats = null
+var _berserk_applied_atk_bonus: float = 0.0
+var _berserk_applied_speed_bonus: float = 0.0
 
 @onready var _combat_target: CombatTarget = get_parent().get_node_or_null("CombatTarget")
 
@@ -185,32 +187,46 @@ func get_move_speed_multiplier() -> float:
 		return maxf(0.10, 1.0 - (_slow_move_percent / 100.0))
 	return 1.0
 
-## Multiplicador de velocidad de ataque (0.0 si está aturdido, reducido si está ralentizado, aumentado si está en Berserker).
+## Multiplicador de velocidad de ataque (0.0 si está aturdido, reducido si está ralentizado).
 func get_attack_speed_multiplier() -> float:
 	if is_stunned():
 		return 0.0
 	var mult: float = 1.0
 	if is_slowed():
 		mult *= maxf(0.10, 1.0 - (_slow_attack_percent / 100.0))
-	if is_berserk():
-		mult *= (1.0 + (_berserk_attack_speed_pct / 100.0))
 	return mult
 
 ## Aplica o renueva el estado de Furia Berserker (+daño y +velocidad de ataque).
 func apply_berserker(damage_pct: float, attack_speed_pct: float, duration: float) -> void:
 	if duration <= 0.0:
 		return
+
+	if _combat_target == null and get_parent() != null:
+		_combat_target = get_parent().get_node_or_null("CombatTarget")
+
 	var was_berserk := is_berserk()
 	_berserk_time_left = maxf(_berserk_time_left, duration)
 	_berserk_attack_speed_pct = attack_speed_pct
+	_berserk_damage_pct = damage_pct
 
 	if not was_berserk:
-		_berserk_damage_pct = damage_pct
 		if _combat_target:
 			var stats := _combat_target.get_stats()
 			if stats:
-				stats.physical_damage_bonus += _berserk_damage_pct
 				_berserk_applied_stats = stats
+				# 1. Bonificación de ataque físico proporcional al ataque base/actual
+				_berserk_applied_atk_bonus = roundf(float(stats.attack) * (damage_pct / 100.0))
+				if _berserk_applied_atk_bonus < 1.0:
+					_berserk_applied_atk_bonus = 1.0
+				stats.buff_atk += _berserk_applied_atk_bonus
+
+				# 2. Bonificación de velocidad de ataque proporcional a la velocidad base/actual
+				_berserk_applied_speed_bonus = stats.attack_speed * (attack_speed_pct / 100.0)
+				stats.buff_atk_speed += _berserk_applied_speed_bonus
+
+				# 3. Recalcular derivadas manteniendo salud/maná actuales
+				stats.recalculate_stats(false)
+
 		berserker_applied.emit(_berserk_time_left, _berserk_damage_pct, _berserk_attack_speed_pct)
 
 func is_berserk() -> bool:
@@ -222,7 +238,13 @@ func get_berserk_time_left() -> float:
 func _remove_berserker() -> void:
 	_berserk_time_left = 0.0
 	if _berserk_applied_stats:
-		_berserk_applied_stats.physical_damage_bonus = maxf(100.0, _berserk_applied_stats.physical_damage_bonus - _berserk_damage_pct)
+		if _berserk_applied_atk_bonus > 0.0:
+			_berserk_applied_stats.buff_atk = maxf(0.0, _berserk_applied_stats.buff_atk - _berserk_applied_atk_bonus)
+			_berserk_applied_atk_bonus = 0.0
+		if _berserk_applied_speed_bonus > 0.0:
+			_berserk_applied_stats.buff_atk_speed = maxf(0.0, _berserk_applied_stats.buff_atk_speed - _berserk_applied_speed_bonus)
+			_berserk_applied_speed_bonus = 0.0
+		_berserk_applied_stats.recalculate_stats(false)
 		_berserk_applied_stats = null
 	berserker_removed.emit()
 

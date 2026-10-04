@@ -112,10 +112,16 @@ func _apply_delayed_strike(caster: Node3D, target: Node3D, caster_stats: Charact
 	if target == null or not is_instance_valid(target):
 		return
 
-	# Resetear timer de autoataque al impacto para que el siguiente básico empiece su cadencia desde este momento
+	# Preparar el siguiente auto-ataque para que salga de inmediato al concluir la animación a la velocidad de ataque actual
 	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
-	if combat_ctrl and combat_ctrl.has_method("reset_attack_timer"):
-		combat_ctrl.reset_attack_timer()
+	if combat_ctrl:
+		if combat_ctrl.has_method("ready_next_attack"):
+			combat_ctrl.ready_next_attack()
+		elif combat_ctrl.has_method("reset_attack_timer"):
+			combat_ctrl.reset_attack_timer()
+		if "current_target" in combat_ctrl and combat_ctrl.current_target == target:
+			if "state" in combat_ctrl and combat_ctrl.state == CombatController.State.IDLE:
+				combat_ctrl.state = CombatController.State.ATTACKING
 
 	# Hit-Stop pronunciado (0.045s) en el momento del impacto
 	var visuals: Node = caster.get_node_or_null("Visuals")

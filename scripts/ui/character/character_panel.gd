@@ -105,8 +105,19 @@ func bind_character(stats: CharacterStats, equipment: EquipmentController, inven
 	if _bound_target:
 		if not _bound_target.health_changed.is_connected(_on_target_health_changed):
 			_bound_target.health_changed.connect(_on_target_health_changed)
+		if _bound_target.get_parent():
+			var status_ctrl := _bound_target.get_parent().get_node_or_null("StatusEffectController")
+			if status_ctrl:
+				if status_ctrl.has_signal("berserker_applied") and not status_ctrl.berserker_applied.is_connected(_on_status_changed_refresh):
+					status_ctrl.berserker_applied.connect(_on_status_changed_refresh)
+				if status_ctrl.has_signal("berserker_removed") and not status_ctrl.berserker_removed.is_connected(_on_status_changed_refresh):
+					status_ctrl.berserker_removed.connect(_on_status_changed_refresh)
 
 	_refresh_all()
+
+func _on_status_changed_refresh(_a = null, _b = null, _c = null) -> void:
+	if visible:
+		_refresh_stats_display()
 
 ## Modo Inspección: Vincula a una entidad ajena para ver su perfil y stats en modo sólo lectura
 func inspect_target(target_node: Node) -> void:

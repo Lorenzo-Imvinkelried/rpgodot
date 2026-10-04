@@ -143,31 +143,51 @@ func _execute_aoe(caster: Node3D, caster_stats: CharacterStats, tree: SceneTree)
 	var targets := tree.get_nodes_in_group("targetable")
 	var processed_entities: Array[Node3D] = []
 
+	# Preservar el objetivo de combate actual del lanzador para garantizar que ningún impacto de área lo altere
+	var combat_ctrl: Node = caster.get_node_or_null("CombatController") if caster else null
+	var preserved_target: Node3D = combat_ctrl.current_target if (combat_ctrl and "current_target" in combat_ctrl) else null
+
 	for node in targets:
 		if node == caster or (caster.has_node("CombatTarget") and node == caster.get_node_or_null("CombatTarget")):
 			continue
-		var target_node: Node3D = node as Node3D
-		if target_node == null and node.get_parent() is Node3D:
-			target_node = node.get_parent() as Node3D
-		if target_node == null or not is_instance_valid(target_node):
+
+		var entity: Node3D = null
+		if node is CombatTarget:
+			entity = node.get_parent() as Node3D
+		elif node is Node3D:
+			entity = node
+		elif node.get_parent() is Node3D:
+			entity = node.get_parent() as Node3D
+
+		if entity == null or not is_instance_valid(entity) or entity == caster:
 			continue
-		if target_node == caster:
-			continue
-		if processed_entities.has(target_node):
+		if processed_entities.has(entity):
 			continue
 
 		# Comprobar que el objetivo esté vivo y con vida positiva
-		if target_node.has_method("is_alive") and not target_node.is_alive():
+		if entity.has_method("is_alive") and not entity.is_alive():
 			continue
-		var target_ct := target_node.get_node_or_null("CombatTarget") as CombatTarget
+		var target_ct := entity.get_node_or_null("CombatTarget") as CombatTarget
 		if target_ct and target_ct.current_health <= 0.0:
 			continue
 
-		var dist := caster.global_position.distance_to(target_node.global_position)
+		var dist := caster.global_position.distance_to(entity.global_position)
 		if dist <= aoe_radius:
-			processed_entities.append(target_node)
-			_execute_single(caster, target_node, caster_stats)
+			processed_entities.append(entity)
+			_execute_single(caster, entity, caster_stats)
 			hits += 1
+
+	# Si el objetivo preservado continúa con vida, asegurar que permanezca firmemente seleccionado
+	if preserved_target != null and is_instance_valid(preserved_target):
+		var target_alive: bool = true
+		if preserved_target.has_method("is_alive"):
+			target_alive = preserved_target.is_alive()
+		var p_ct := preserved_target.get_node_or_null("CombatTarget") as CombatTarget
+		if p_ct and p_ct.current_health <= 0.0:
+			target_alive = false
+
+		if target_alive and combat_ctrl and combat_ctrl.has_method("select_target") and combat_ctrl.current_target != preserved_target:
+			combat_ctrl.select_target(preserved_target)
 
 	return { "success": true, "hits": hits }
 

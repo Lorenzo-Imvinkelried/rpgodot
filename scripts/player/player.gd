@@ -21,6 +21,7 @@ const ProgressionControllerScript = preload("res://scripts/gameplay/progression/
 @onready var equipment_controller: EquipmentController = get_node_or_null("EquipmentController")
 @onready var skill_controller: SkillController = get_node_or_null("SkillController")
 @onready var progression_controller: ProgressionController = get_node_or_null("ProgressionController")
+@onready var status_controller: StatusEffectController = get_node_or_null("StatusEffectController")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var _was_forward_pressed: bool = false
@@ -124,6 +125,13 @@ func _ready() -> void:
 		progression_controller = ProgressionControllerScript.new()
 		progression_controller.name = "ProgressionController"
 		add_child(progression_controller)
+
+	if status_controller == null:
+		status_controller = get_node_or_null("StatusEffectController") as StatusEffectController
+	if status_controller == null:
+		status_controller = StatusEffectController.new()
+		status_controller.name = "StatusEffectController"
+		add_child(status_controller)
 
 	if combat_target:
 		progression_controller.setup(combat_target)
@@ -305,9 +313,9 @@ func move_to_ground_position(target_pos: Vector3) -> void:
 	if not is_multiplayer_authority():
 		return
 
-	# Si se encontraba en combate activo o aproximándose, cancelarlo inmediatamente
+	# Si se encontraba en combate activo o aproximándose, pausar la acción sin deseleccionar el objetivo
 	if combat_controller and combat_controller.is_active():
-		combat_controller.clear_target()
+		combat_controller.pause_combat()
 
 	_click_move_target = target_pos
 	_has_click_move = true
@@ -351,7 +359,7 @@ func _process(delta: float) -> void:
 
 		visuals.update_animation(is_moving, speed)
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -464,7 +472,7 @@ func _process_movement(delta: float) -> void:
 		if combat_target:
 			combat_target.trigger_invulnerability(dash_dur)
 		if combat_controller and combat_controller.is_active():
-			combat_controller.clear_target()
+			combat_controller.pause_combat()
 		clear_click_move()
 
 		velocity.x = _dash_velocity.x
@@ -486,7 +494,7 @@ func _process_movement(delta: float) -> void:
 	var has_manual_input := (turn_input != 0.0 or forward_input != 0.0)
 	if has_manual_input:
 		if combat_controller and combat_controller.is_active():
-			combat_controller.clear_target()
+			combat_controller.pause_combat()
 		clear_click_move()
 		if visuals:
 			visuals.is_attacking_anim = false

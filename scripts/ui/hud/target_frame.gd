@@ -35,28 +35,29 @@ func _ready() -> void:
 
 ## Asigna y vincula un nuevo objetivo al marco. Si target es null, oculta el marco.
 func set_target(target_node: Node) -> void:
-	if _current_combat_target:
-		if _current_combat_target.health_changed.is_connected(_on_target_health_changed):
-			_current_combat_target.health_changed.disconnect(_on_target_health_changed)
-		if _current_combat_target.died.is_connected(_on_target_died):
-			_current_combat_target.died.disconnect(_on_target_died)
+	_disconnect_current()
+
+	if not is_instance_valid(target_node):
+		hide()
+		return
+
+	var ct := _find_combat_target(target_node)
+	if ct == null:
+		hide()
+		return
+
+	if ct.current_health <= 0.0 or (target_node is Node3D and not CombatController.is_target_alive(target_node as Node3D)):
+		hide()
+		return
 
 	_current_target_node = target_node
-	if not is_instance_valid(_current_target_node):
-		_clear()
-		return
+	_current_combat_target = ct
 
-	_current_combat_target = _find_combat_target(_current_target_node)
-	if _current_combat_target == null:
-		_clear()
-		return
+	if not _current_combat_target.health_changed.is_connected(_on_target_health_changed):
+		_current_combat_target.health_changed.connect(_on_target_health_changed)
+	if not _current_combat_target.died.is_connected(_on_target_died):
+		_current_combat_target.died.connect(_on_target_died)
 
-	if _current_combat_target.current_health <= 0.0 or (_current_target_node is Node3D and not CombatController.is_target_alive(_current_target_node as Node3D)):
-		_clear()
-		return
-
-	_current_combat_target.health_changed.connect(_on_target_health_changed)
-	_current_combat_target.died.connect(_on_target_died)
 	_current_stats = _current_combat_target.get_stats()
 	_current_status_ctrl = _find_status_controller(_current_target_node)
 
@@ -83,17 +84,31 @@ func set_target(target_node: Node) -> void:
 	else:
 		set_mana(0.0, 0.0)
 
+	if _current_status_ctrl:
+		if _current_status_ctrl.has_signal("berserker_applied") and not _current_status_ctrl.berserker_applied.is_connected(_refresh_status_badges):
+			_current_status_ctrl.berserker_applied.connect(func(_d, _dmg, _spd): _refresh_status_badges())
+		if _current_status_ctrl.has_signal("berserker_removed") and not _current_status_ctrl.berserker_removed.is_connected(_refresh_status_badges):
+			_current_status_ctrl.berserker_removed.connect(_refresh_status_badges)
+
 	_refresh_status_badges()
 	show()
 
 func clear_target() -> void:
 	_clear()
 
-func _clear() -> void:
-	_current_target_node = null
+func _disconnect_current() -> void:
+	if is_instance_valid(_current_combat_target):
+		if _current_combat_target.health_changed.is_connected(_on_target_health_changed):
+			_current_combat_target.health_changed.disconnect(_on_target_health_changed)
+		if _current_combat_target.died.is_connected(_on_target_died):
+			_current_combat_target.died.disconnect(_on_target_died)
 	_current_combat_target = null
+	_current_target_node = null
 	_current_stats = null
 	_current_status_ctrl = null
+
+func _clear() -> void:
+	_disconnect_current()
 	hide()
 
 func set_health(current: float, max_val: float) -> void:
@@ -143,6 +158,8 @@ func _refresh_status_badges() -> void:
 			badges.append("🩸")
 		if _current_status_ctrl.is_slowed():
 			badges.append("❄")
+		if _current_status_ctrl.has_method("is_berserk") and _current_status_ctrl.is_berserk():
+			badges.append("🪓")
 	if _current_combat_target and _current_combat_target.is_guarding:
 		badges.append("🛡")
 

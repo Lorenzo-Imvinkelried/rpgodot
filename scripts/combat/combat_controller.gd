@@ -137,16 +137,61 @@ func _disconnect_target() -> void:
 	_target_combat_target = null
 
 func _on_target_died() -> void:
-	clear_target()
+	var next_target := _find_next_active_combatant()
+	if next_target != null:
+		select_target(next_target)
+	else:
+		clear_target()
+
+## Busca el siguiente enemigo activo en combate con el jugador dentro del rango.
+func _find_next_active_combatant(max_distance: float = 25.0) -> Node3D:
+	var p := _get_parent_body()
+	if p == null or not is_inside_tree():
+		return null
+	var tree := get_tree()
+	if tree == null:
+		return null
+
+	var candidates: Array[Node3D] = []
+	var targetable_nodes := tree.get_nodes_in_group("targetable")
+	var processed: Array[Node3D] = []
+
+	for node in targetable_nodes:
+		var entity: Node3D = null
+		if node is CombatTarget:
+			entity = node.get_parent() as Node3D
+		elif node is Node3D:
+			entity = node
+		elif node.get_parent() is Node3D:
+			entity = node.get_parent() as Node3D
+
+		if entity == null or not is_instance_valid(entity) or entity == p or entity == current_target:
+			continue
+		if processed.has(entity):
+			continue
+		processed.append(entity)
+
+		if not is_target_alive(entity):
+			continue
+
+		var dist := p.global_position.distance_to(entity.global_position)
+		if dist <= max_distance and _is_hostile_to_player(entity, p):
+			candidates.append(entity)
+
+	if candidates.is_empty():
+		return null
+
+	candidates.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+		return p.global_position.distance_squared_to(a.global_position) < p.global_position.distance_squared_to(b.global_position)
+	)
+
+	return candidates[0]
 
 ## Selecciona un objetivo sin iniciar aproximación ni auto-ataque inmediato.
 func select_target(new_target: Node3D) -> void:
 	var p := _get_parent_body()
 	if new_target == null or new_target == p or not is_target_alive(new_target):
 		clear_target()
-		return
-
-	if current_target == new_target and state == State.IDLE:
 		return
 
 	_connect_target(new_target)
@@ -229,7 +274,9 @@ func cycle_target(max_distance: float = 30.0) -> Node3D:
 
 	for node in targetable_nodes:
 		var entity: Node3D = null
-		if node is Node3D:
+		if node is CombatTarget:
+			entity = node.get_parent() as Node3D
+		elif node is Node3D:
 			entity = node
 		elif node.get_parent() is Node3D:
 			entity = node.get_parent() as Node3D
@@ -250,12 +297,18 @@ func cycle_target(max_distance: float = 30.0) -> Node3D:
 	if candidates.is_empty():
 		return null
 
-	# Priorizar objetivos que están en combate con el jugador sobre el resto, y luego por distancia horizontal
+	# Priorizar jefes primero, luego enemigos hostiles en combate con el jugador, y luego por cercanía horizontal
 	candidates.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+		var a_boss: bool = ("is_boss" in a and a.is_boss) or ("mIsBoss" in a and a.mIsBoss)
+		var b_boss: bool = ("is_boss" in b and b.is_boss) or ("mIsBoss" in b and b.mIsBoss)
+		if a_boss != b_boss:
+			return a_boss
+
 		var a_hostile := _is_hostile_to_player(a, p)
 		var b_hostile := _is_hostile_to_player(b, p)
 		if a_hostile != b_hostile:
 			return a_hostile
+
 		return p.global_position.distance_squared_to(a.global_position) < p.global_position.distance_squared_to(b.global_position)
 	)
 
@@ -275,6 +328,8 @@ func cycle_target(max_distance: float = 30.0) -> Node3D:
 static func _is_hostile_to_player(entity: Node3D, player: Node3D) -> bool:
 	if entity == null or player == null:
 		return false
+	if ("is_boss" in entity and entity.is_boss) or ("mIsBoss" in entity and entity.mIsBoss):
+		return true
 	if "mAggroTarget" in entity and entity.mAggroTarget == player:
 		return true
 	if "aggro_pool" in entity and entity.aggro_pool != null:
@@ -282,7 +337,9 @@ static func _is_hostile_to_player(entity: Node3D, player: Node3D) -> bool:
 			return true
 	var ct := entity.get_node_or_null("CombatTarget") as CombatTarget
 	if ct != null:
-		if ct.is_in_combat and ct.last_attacker == player:
+		if ct.is_in_combat and (ct.last_attacker == player or ct.last_attacker == null):
+			return true
+		if ct.is_in_combat:
 			return true
 	return false
 
@@ -297,6 +354,11 @@ func clear_target() -> void:
 
 	if had_target:
 		target_lost.emit()
+
+## Pausa la aproximación o el auto-ataque activo sin deseleccionar el objetivo actual (usado por movimiento WASD, Dash, Click-to-Move).
+func pause_combat() -> void:
+	state = State.IDLE
+	_pending_impacts.clear()
 
 func is_active() -> bool:
 	return state != State.IDLE and is_instance_valid(current_target) and is_target_alive(current_target)
@@ -397,6 +459,10 @@ func cancel_pending_attack() -> void:
 ## Reinicia el temporizador de cadencia del ataque básico (usado por habilidades o reinicios de ataque)
 func reset_attack_timer() -> void:
 	_time_since_last_attack = 0.0
+
+## Prepara el auto-ataque para ejecutarse inmediatamente (usado por buffs como Berserker)
+func ready_next_attack() -> void:
+	_time_since_last_attack = 999.0
 
 func _face_target() -> void:
 	if _parent_body == null or not is_instance_valid(current_target):
@@ -526,10 +592,10 @@ func _apply_impact(target: Node3D, hit_index: int = 0, allow_true_damage: bool =
 		if visuals and visuals.has_method("trigger_hit_stop"):
 			visuals.trigger_hit_stop(0.04)
 
-	# Si el objetivo murió a raíz de este impacto, detener el combate de inmediato
+	# Si el objetivo murió a raíz de este impacto, detener el combate o transicionar al siguiente objetivo
 	if not is_target_alive(target):
 		if target == current_target:
-			clear_target()
+			_on_target_died()
 
 	# 7.6 Ondas Expansivas / Cleave en Área (AoE Cleave Waves)
 	# Se ejecuta únicamente con el impacto principal (hit_index == 0) para evitar duplicación exponencial
@@ -594,10 +660,10 @@ func rpc_apply_combat_impact(
 			target_comp.take_combat_result(res, hit_pos, _parent_body)
 		attack_executed.emit(target_node, float(total_damage))
 
-		# Si el impacto provocó la muerte del objetivo, detener inmediatamente el combate
+		# Si el impacto provocó la muerte del objetivo, detener inmediatamente el combate o transicionar
 		if not is_target_alive(target_node):
 			if target_node == current_target:
-				clear_target()
+				_on_target_died()
 
 ## RPC legacy para compatibilidad con código que invoque daño plano.
 @rpc("any_peer", "call_local", "reliable")

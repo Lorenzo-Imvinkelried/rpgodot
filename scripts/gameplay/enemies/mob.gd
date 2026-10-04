@@ -671,6 +671,10 @@ func _on_combat_target_died() -> void:
 
 	if collision_shape:
 		collision_shape.set_deferred("disabled", true)
+	for child in find_children("*", "CollisionShape3D", true, false):
+		var cs := child as CollisionShape3D
+		if cs:
+			cs.set_deferred("disabled", true)
 
 	if is_in_group("targetable"):
 		remove_from_group("targetable")

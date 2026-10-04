@@ -84,6 +84,9 @@ func bind_player(player: Node) -> void:
 		_bound_status.bleed_removed.connect(_on_status_changed)
 		_bound_status.slow_applied.connect(_on_status_changed)
 		_bound_status.slow_removed.connect(_on_status_changed)
+		if _bound_status.has_signal("berserker_applied"):
+			_bound_status.berserker_applied.connect(_on_status_changed)
+			_bound_status.berserker_removed.connect(_on_status_changed)
 
 	var prog_ctrl := _bound_player.get_node_or_null("ProgressionController") as Node
 	if prog_ctrl and prog_ctrl.has_signal("level_up"):
@@ -171,6 +174,8 @@ func _refresh_status_badges() -> void:
 			badges.append("🩸")
 		if _bound_status.is_slowed():
 			badges.append("❄")
+		if _bound_status.has_method("is_berserk") and _bound_status.is_berserk():
+			badges.append("🪓")
 	if _bound_target and _bound_target.is_guarding:
 		badges.append("🛡")
 	if _bound_target and _bound_target.is_in_combat:
