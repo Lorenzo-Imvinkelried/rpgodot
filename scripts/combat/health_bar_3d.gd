@@ -23,6 +23,7 @@ const COLOR_HEALTH_LOW := Color(0.92, 0.26, 0.26, 1.0)
 
 var _ui_container: Control = null
 var _is_floating_2d: bool = false
+var _is_ui_visible: bool = true
 var _current_health: float = 100.0
 var _max_health: float = 100.0
 var _hp_tween: Tween = null
@@ -72,6 +73,9 @@ func _ready() -> void:
 		_status_controller.bleed_removed.connect(_on_status_changed)
 		_status_controller.slow_applied.connect(_on_status_changed)
 		_status_controller.slow_removed.connect(_on_status_changed)
+		if _status_controller.has_signal("berserker_applied"):
+			_status_controller.berserker_applied.connect(_on_status_changed)
+			_status_controller.berserker_removed.connect(_on_status_changed)
 
 	if combat_target:
 		combat_target.health_changed.connect(_on_health_changed)
@@ -102,6 +106,8 @@ func _refresh_name_display() -> void:
 			badges.append("🩸")
 		if _status_controller.is_slowed():
 			badges.append("❄")
+		if _status_controller.has_method("is_berserk") and _status_controller.is_berserk():
+			badges.append("🪓")
 	if combat_target and combat_target.is_guarding:
 		badges.append("🛡")
 
@@ -182,6 +188,7 @@ func _setup_floating_ui() -> void:
 	if layer != null:
 		layer.add_floating_element(_ui_container)
 		_is_floating_2d = true
+		_ui_container.visible = false
 		if sprite_3d:
 			sprite_3d.visible = false
 		if sub_viewport:
@@ -195,6 +202,10 @@ func _process(_delta: float) -> void:
 	if not _is_floating_2d or _ui_container == null or not is_instance_valid(_ui_container):
 		return
 
+	if not _is_ui_visible:
+		_ui_container.visible = false
+		return
+
 	if not is_visible_in_tree():
 		_ui_container.visible = false
 		return
@@ -202,15 +213,6 @@ func _process(_delta: float) -> void:
 	if combat_target != null and combat_target.current_health <= 0.0:
 		_ui_container.visible = false
 		return
-
-func set_visible_ui(p_visible: bool) -> void:
-	if _ui_container != null and is_instance_valid(_ui_container):
-		_ui_container.visible = p_visible
-	if sprite_3d != null and is_instance_valid(sprite_3d):
-		sprite_3d.visible = p_visible
-
-func _on_combat_target_died() -> void:
-	set_visible_ui(false)
 
 	var vp := get_viewport()
 	if vp == null:
@@ -240,6 +242,20 @@ func _on_combat_target_died() -> void:
 	var scale_factor := clampf(1.0 - (dist - 8.0) * 0.012, 0.75, 1.05)
 	_ui_container.scale = Vector2(scale_factor, scale_factor)
 	_ui_container.pivot_offset = _ui_container.size * 0.5
+
+func set_visible_ui(p_visible: bool) -> void:
+	_is_ui_visible = p_visible
+	if _ui_container != null and is_instance_valid(_ui_container):
+		_ui_container.visible = p_visible
+		if p_visible:
+			_ui_container.modulate.a = 1.0
+	if sprite_3d != null and is_instance_valid(sprite_3d):
+		sprite_3d.visible = p_visible
+		if p_visible:
+			sprite_3d.modulate.a = 1.0
+
+func _on_combat_target_died() -> void:
+	set_visible_ui(false)
 
 func _update_auto_hide() -> void:
 	if not auto_hide_when_full:

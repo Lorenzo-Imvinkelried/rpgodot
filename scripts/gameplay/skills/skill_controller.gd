@@ -8,6 +8,7 @@ extends Node
 signal skill_cast_started(skill: RefCounted, target: Node3D)
 signal skill_cast_finished(skill: RefCounted, target: Node3D)
 signal skill_cast_failed(reason: String)
+signal skill_equipped(slot_idx: int, skill: BaseSkill)
 
 const SkillPowerStrikeScript = preload("res://scripts/gameplay/skills/definitions/skill_power_strike.gd")
 const SkillLightningScript = preload("res://scripts/gameplay/skills/definitions/skill_lightning.gd")
@@ -17,6 +18,8 @@ const SkillSunRayScript = preload("res://scripts/gameplay/skills/definitions/ski
 const SkillMeteorScript = preload("res://scripts/gameplay/skills/definitions/skill_meteor.gd")
 const SkillWhirlwindScript = preload("res://scripts/gameplay/skills/definitions/skill_whirlwind.gd")
 const SkillBloodySlashScript = preload("res://scripts/gameplay/skills/definitions/skill_bloody_slash.gd")
+const SkillBerserkerScript = preload("res://scripts/gameplay/skills/definitions/skill_berserker.gd")
+const SkillChargeScript = preload("res://scripts/gameplay/skills/definitions/skill_charge.gd")
 
 var _skills: Dictionary = {} # slot_index (int) -> BaseSkill
 var _cooldowns: Dictionary = {} # slot_index -> float remaining
@@ -61,11 +64,37 @@ func _setup_default_skills() -> void:
 	# Slot 9 (Key 0): Tajo Sangriento
 	_skills[9] = SkillBloodySlashScript.new()
 
-## Registra o reemplaza una habilidad en un slot específico
+## Retorna el catálogo completo de habilidades disponibles para equipar
+static func get_skill_catalog() -> Array[BaseSkill]:
+	var list: Array[BaseSkill] = [
+		SkillPowerStrikeScript.new(),
+		SkillBerserkerScript.new(),
+		SkillChargeScript.new(),
+		SkillWhirlwindScript.new(),
+		SkillBloodySlashScript.new(),
+		SkillLightningScript.new(),
+		SkillFireballScript.new(),
+		SkillFrostScript.new(),
+		SkillSunRayScript.new(),
+		SkillMeteorScript.new()
+	]
+	return list
+
+## Registra o reemplaza una habilidad en un slot específico y notifica a la UI
 func register_skill(slot_idx: int, skill: BaseSkill) -> void:
 	if skill != null:
 		skill.slot_index = slot_idx
 		_skills[slot_idx] = skill
+		skill_equipped.emit(slot_idx, skill)
+
+## Equipa una habilidad por su identificador de catálogo
+func equip_skill_by_id(skill_id: String, slot_idx: int) -> bool:
+	var catalog := get_skill_catalog()
+	for s in catalog:
+		if s.id == skill_id:
+			register_skill(slot_idx, s)
+			return true
+	return false
 
 ## Retorna la habilidad asignada a un slot específico
 func get_skill(slot_idx: int) -> BaseSkill:
@@ -86,30 +115,30 @@ func activate_slot(slot_idx: int, target: Node3D = null, cast_bar: Control = nul
 		skill_cast_failed.emit("Aturdido")
 		return false
 
-	# 2. Slot 0: Skill 1 (Golpe Potente - básico más fuerte y veloz)
-	if slot_idx == 0:
+	# 2. Slot 0: Si está configurado con Golpe Potente, usar su lógica de auto-aproximación
+	if slot_idx == 0 and _skills.get(0) is SkillPowerStrikeScript:
 		return _activate_skill_1(target, hotbar)
 
 	# 3. Slot 1: Dash (espacio)
-	if slot_idx == 1:
+	if slot_idx == 1 and not _skills.has(1):
 		return true
 
 	# 4. Slot 2: Guardia (shift)
-	if slot_idx == 2:
+	if slot_idx == 2 and not _skills.has(2):
 		var ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget if _parent_body else null
 		if ct:
 			ct.is_guarding = not ct.is_guarding
 		return true
 
 	# 5. Slots 10 y 11: Pociones
-	if slot_idx == 10:
+	if slot_idx == 10 and not _skills.has(10):
 		var ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget if _parent_body else null
 		return _use_potion("Salud", ct)
-	if slot_idx == 11:
+	if slot_idx == 11 and not _skills.has(11):
 		var ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget if _parent_body else null
 		return _use_potion("Maná", ct)
 
-	# 6. Habilidades de combate (Slots 3 a 9)
+	# 6. Habilidades de combate registradas
 	if not _skills.has(slot_idx):
 		return false
 
@@ -119,6 +148,19 @@ func activate_slot(slot_idx: int, target: Node3D = null, cast_bar: Control = nul
 	if _cooldowns.has(slot_idx) and _cooldowns[slot_idx] > 0.0:
 		skill_cast_failed.emit("En enfriamiento")
 		return false
+
+	# Auto-adquisición de objetivo si la habilidad requiere objetivo y no se pasó uno válido
+	if not skill.is_aoe and skill.range_distance > 0.0:
+		if target == null or target == _parent_body or not is_instance_valid(target) or (target.has_method("is_alive") and not target.is_alive()):
+			var combat_ctrl: Node = _parent_body.get_node_or_null("CombatController") if _parent_body else null
+			target = null
+			if combat_ctrl and "current_target" in combat_ctrl and is_instance_valid(combat_ctrl.current_target):
+				if combat_ctrl.current_target != _parent_body and (not combat_ctrl.current_target.has_method("is_alive") or combat_ctrl.current_target.is_alive()):
+					target = combat_ctrl.current_target
+			if target == null:
+				target = _find_nearest_target(skill.range_distance + 2.0)
+				if target and combat_ctrl and combat_ctrl.has_method("select_target"):
+					combat_ctrl.select_target(target)
 
 	# Validación de condiciones (maná, rango, objetivo)
 	var caster_ct := _parent_body.get_node_or_null("CombatTarget") as CombatTarget if _parent_body else null

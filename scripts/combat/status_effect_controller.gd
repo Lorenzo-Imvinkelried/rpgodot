@@ -11,6 +11,8 @@ signal bleed_tick_applied(damage: int)
 signal bleed_removed()
 signal slow_applied(move_percent: float, attack_percent: float, duration: float)
 signal slow_removed()
+signal berserker_applied(duration: float, damage_pct: float, attack_speed_pct: float)
+signal berserker_removed()
 
 const BLEED_TICK_INTERVAL: float = 1.0
 
@@ -30,6 +32,12 @@ var _slow_time_left: float = 0.0
 var _slow_move_percent: float = 0.0
 var _slow_attack_percent: float = 0.0
 
+# --- Estado de Furia Berserker (Buff) ---
+var _berserk_time_left: float = 0.0
+var _berserk_damage_pct: float = 0.0
+var _berserk_attack_speed_pct: float = 0.0
+var _berserk_applied_stats: CharacterStats = null
+
 @onready var _combat_target: CombatTarget = get_parent().get_node_or_null("CombatTarget")
 
 func _ready() -> void:
@@ -43,7 +51,7 @@ func _process(delta: float) -> void:
 	if _combat_target == null and get_parent() != null:
 		_combat_target = get_parent().get_node_or_null("CombatTarget")
 	if _combat_target != null and _combat_target.current_health <= 0.0:
-		if is_stunned() or is_bleeding() or is_slowed():
+		if is_stunned() or is_bleeding() or is_slowed() or is_berserk():
 			cleanse_all()
 		return
 	update_status_effects(delta)
@@ -81,6 +89,12 @@ func update_status_effects(delta: float) -> void:
 			_bleed_source_stats = null
 			_bleed_source_node = null
 			bleed_removed.emit()
+
+	# 4. Furia Berserker
+	if _berserk_time_left > 0.0:
+		_berserk_time_left -= delta
+		if _berserk_time_left <= 0.0:
+			_remove_berserker()
 
 ## Aplica o renueva el estado de Aturdimiento (Stun).
 func apply_stun(duration: float) -> void:
@@ -171,13 +185,46 @@ func get_move_speed_multiplier() -> float:
 		return maxf(0.10, 1.0 - (_slow_move_percent / 100.0))
 	return 1.0
 
-## Multiplicador de velocidad de ataque (0.0 si está aturdido, reducido si está ralentizado).
+## Multiplicador de velocidad de ataque (0.0 si está aturdido, reducido si está ralentizado, aumentado si está en Berserker).
 func get_attack_speed_multiplier() -> float:
 	if is_stunned():
 		return 0.0
+	var mult: float = 1.0
 	if is_slowed():
-		return maxf(0.10, 1.0 - (_slow_attack_percent / 100.0))
-	return 1.0
+		mult *= maxf(0.10, 1.0 - (_slow_attack_percent / 100.0))
+	if is_berserk():
+		mult *= (1.0 + (_berserk_attack_speed_pct / 100.0))
+	return mult
+
+## Aplica o renueva el estado de Furia Berserker (+daño y +velocidad de ataque).
+func apply_berserker(damage_pct: float, attack_speed_pct: float, duration: float) -> void:
+	if duration <= 0.0:
+		return
+	var was_berserk := is_berserk()
+	_berserk_time_left = maxf(_berserk_time_left, duration)
+	_berserk_attack_speed_pct = attack_speed_pct
+
+	if not was_berserk:
+		_berserk_damage_pct = damage_pct
+		if _combat_target:
+			var stats := _combat_target.get_stats()
+			if stats:
+				stats.physical_damage_bonus += _berserk_damage_pct
+				_berserk_applied_stats = stats
+		berserker_applied.emit(_berserk_time_left, _berserk_damage_pct, _berserk_attack_speed_pct)
+
+func is_berserk() -> bool:
+	return _berserk_time_left > 0.0
+
+func get_berserk_time_left() -> float:
+	return _berserk_time_left
+
+func _remove_berserker() -> void:
+	_berserk_time_left = 0.0
+	if _berserk_applied_stats:
+		_berserk_applied_stats.physical_damage_bonus = maxf(100.0, _berserk_applied_stats.physical_damage_bonus - _berserk_damage_pct)
+		_berserk_applied_stats = null
+	berserker_removed.emit()
 
 ## Limpia todos los estados alterados (útil en respawn o muerte).
 func clear_all_effects() -> void:
@@ -195,6 +242,8 @@ func clear_all_effects() -> void:
 		_slow_move_percent = 0.0
 		_slow_attack_percent = 0.0
 		slow_removed.emit()
+	if is_berserk():
+		_remove_berserker()
 
 ## Alias para limpieza total de estados alterados
 func cleanse_all() -> void:

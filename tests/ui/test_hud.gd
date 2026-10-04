@@ -27,6 +27,7 @@ func _run_tests() -> void:
 	assert(hud.cast_bar != null, "CastBar debe estar instanciado")
 	assert(hud.exp_bar != null, "ExpBar debe estar instanciado")
 	assert(hud.quick_buttons != null, "QuickButtons debe estar instanciado")
+	assert(hud.skill_panel != null, "SkillPanel debe estar instanciado")
 	print("[OK] Prueba 1: Componentes principales del GameHUD instanciados correctamente.")
 
 	# 2. Verificación de PlayerFrame

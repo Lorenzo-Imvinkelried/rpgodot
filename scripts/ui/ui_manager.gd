@@ -7,6 +7,7 @@ extends Node
 
 signal inventory_toggle_requested
 signal character_sheet_toggle_requested
+signal skills_toggle_requested
 
 static var instance: UIManager = null
 
@@ -40,3 +41,7 @@ func request_toggle_inventory() -> void:
 ## Emite solicitud de alternar visibilidad del panel de personaje y equipamiento.
 func request_toggle_character_sheet() -> void:
 	character_sheet_toggle_requested.emit()
+
+## Emite solicitud de alternar visibilidad del grimorio de habilidades.
+func request_toggle_skills() -> void:
+	skills_toggle_requested.emit()

@@ -15,6 +15,7 @@ signal disconnect_requested
 @onready var quick_buttons: QuickButtons = %QuickButtons
 @onready var inventory_panel: InventoryPanel = %InventoryPanel
 @onready var character_panel: CharacterPanel = %CharacterPanel
+@onready var skill_panel: SkillPanel = get_node_or_null("%SkillPanel")
 @onready var status_label: Label = %HUDStatus
 @onready var disconnect_button: Button = %DisconnectButton
 
@@ -28,10 +29,14 @@ func _ready() -> void:
 	if quick_buttons:
 		quick_buttons.inventory_toggle_requested.connect(_on_inventory_toggle_requested)
 		quick_buttons.character_sheet_toggle_requested.connect(_on_character_sheet_toggle_requested)
+		if quick_buttons.has_signal("skills_toggle_requested"):
+			quick_buttons.skills_toggle_requested.connect(_on_skills_toggle_requested)
 
 	if UIManager.instance:
 		UIManager.instance.inventory_toggle_requested.connect(_on_inventory_toggle_requested)
 		UIManager.instance.character_sheet_toggle_requested.connect(_on_character_sheet_toggle_requested)
+		if UIManager.instance.has_signal("skills_toggle_requested"):
+			UIManager.instance.skills_toggle_requested.connect(_on_skills_toggle_requested)
 
 	if target_frame:
 		target_frame.inspect_requested.connect(_on_target_inspect_requested)
@@ -64,10 +69,16 @@ func bind_player(player_node: Node) -> void:
 		if not hotbar.slot_activated.is_connected(_on_hotbar_slot_activated):
 			hotbar.slot_activated.connect(_on_hotbar_slot_activated)
 
-	var skill_ctrl := _bound_player.get_node_or_null("SkillController") as Node
-	if skill_ctrl and skill_ctrl.has_signal("skill_cast_failed"):
-		if not skill_ctrl.skill_cast_failed.is_connected(_on_skill_cast_failed):
-			skill_ctrl.skill_cast_failed.connect(_on_skill_cast_failed)
+	var skill_ctrl := _bound_player.get_node_or_null("SkillController") as SkillController
+	if skill_ctrl:
+		if skill_ctrl.has_signal("skill_cast_failed"):
+			if not skill_ctrl.skill_cast_failed.is_connected(_on_skill_cast_failed):
+				skill_ctrl.skill_cast_failed.connect(_on_skill_cast_failed)
+		if skill_ctrl.has_signal("skill_equipped"):
+			if not skill_ctrl.skill_equipped.is_connected(_on_skill_equipped):
+				skill_ctrl.skill_equipped.connect(_on_skill_equipped)
+		if skill_panel:
+			skill_panel.bind_skill_controller(skill_ctrl, _bound_player)
 
 	var status_ctrl := _bound_player.get_node_or_null("StatusEffectController") as Node
 	if status_ctrl and cast_bar and status_ctrl.has_signal("stun_applied"):
@@ -153,6 +164,14 @@ func _on_inventory_toggle_requested() -> void:
 func _on_character_sheet_toggle_requested() -> void:
 	if character_panel:
 		character_panel.toggle_panel()
+
+func _on_skills_toggle_requested() -> void:
+	if skill_panel:
+		skill_panel.toggle_panel()
+
+func _on_skill_equipped(slot_idx: int, skill: BaseSkill) -> void:
+	if hotbar and skill:
+		hotbar.set_slot_skill(slot_idx, skill.name, skill.icon)
 
 func _on_target_inspect_requested(target_node: Node) -> void:
 	if character_panel and is_instance_valid(target_node):

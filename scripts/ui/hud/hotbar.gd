@@ -104,6 +104,33 @@ func _get_slot_node(slot_index: int) -> Control:
 		return slots_container.get_child(slot_index) as Control
 	return null
 
+## Actualiza la visualización (icono y tooltip) de un slot con la habilidad asignada
+func set_slot_skill(slot_idx: int, skill_name: String, icon_text: String) -> void:
+	var slot := _get_slot_node(slot_idx)
+	if slot == null:
+		return
+	var key_text := _get_slot_key_name(slot_idx)
+	slot.tooltip_text = "%s (%s)" % [skill_name, key_text]
+	var icon_lbl: Label = slot.get_node_or_null("IconLabel")
+	if icon_lbl:
+		icon_lbl.text = icon_text
+
+func _get_slot_key_name(slot_idx: int) -> String:
+	match slot_idx:
+		0: return "1"
+		1: return "Space"
+		2: return "Shift"
+		3: return "4"
+		4: return "5"
+		5: return "6"
+		6: return "7"
+		7: return "8"
+		8: return "9"
+		9: return "0"
+		10: return "-"
+		11: return "="
+	return str(slot_idx + 1)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_visible_in_tree():
 		return
