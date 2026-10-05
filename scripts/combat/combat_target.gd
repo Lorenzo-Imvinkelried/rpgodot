@@ -279,6 +279,7 @@ func rpc_reset_health() -> void:
 ## Incrementa la salud en una cantidad fija sin superar el valor máximo.
 func heal(amount: float) -> void:
 	if stats:
+		stats.current_hp = int(round(current_health))
 		stats.heal(int(round(amount)))
 		current_health = float(stats.current_hp)
 	else:

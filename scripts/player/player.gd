@@ -503,17 +503,24 @@ func _process_movement(delta: float) -> void:
 		move_and_slide()
 		return
 
+	# Si está ejecutando activamente una animación de ataque (habilidad o golpe), frenar en seco para realizar el golpe
+	if visuals and visuals.is_playing_attack():
+		clear_click_move()
+		velocity.x = 0.0
+		velocity.z = 0.0
+		is_moving = false
+		move_and_slide()
+		return
+
 	# Cancelar combate automático y click-to-move si el jugador presiona manualmente cualquier tecla de movimiento
 	var has_manual_input := (turn_input != 0.0 or forward_input != 0.0)
 	if has_manual_input:
 		if combat_controller and combat_controller.is_active():
 			combat_controller.pause_combat()
 		clear_click_move()
-		if visuals:
-			visuals.is_attacking_anim = false
 
 	# Auto-aproximación hacia el objetivo de combate (directo, en línea recta y sin alterar la cámara)
-	if not has_manual_input and combat_controller and combat_controller.is_approaching() and not (visuals and visuals.is_playing_attack()):
+	if not has_manual_input and combat_controller and combat_controller.is_approaching():
 		clear_click_move()
 		var approach_dir := combat_controller.get_approach_direction()
 		if approach_dir != Vector3.ZERO:
@@ -527,8 +534,8 @@ func _process_movement(delta: float) -> void:
 			move_and_slide()
 			return
 
-	# Si está en rango atacando o ejecutando un ataque de habilidad, frenar en seco inmediatamente para dar los golpes
-	if not has_manual_input and ((combat_controller and combat_controller.is_attacking()) or (visuals and visuals.is_playing_attack())):
+	# Si está en rango atacando automáticamente (sin input manual), frenar en seco para dar los golpes
+	if not has_manual_input and combat_controller and combat_controller.is_attacking():
 		clear_click_move()
 		velocity.x = 0.0
 		velocity.z = 0.0

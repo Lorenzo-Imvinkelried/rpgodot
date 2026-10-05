@@ -34,6 +34,11 @@ func _ready() -> void:
 		close_button.focus_mode = Control.FOCUS_NONE
 		close_button.pressed.connect(close_command_bar)
 
+	if chat_window:
+		var input_panel: Control = chat_window.get_node_or_null("MarginContainer/VBoxContainer/InputPanel")
+		if input_panel:
+			input_panel.gui_input.connect(_on_input_panel_gui_input)
+
 	_messages.append("[color=#66aaff]Consola de comandos lista. Escribe [b]/ayuda[/b] para ver comandos o [b]/darme <stat> <cantidad>[/b].[/color]")
 	_refresh_log_display()
 
@@ -41,29 +46,61 @@ func _ready() -> void:
 func bind_player(player_node: Node) -> void:
 	_bound_player = player_node
 
+func _input(event: InputEvent) -> void:
+	if not (chat_window and chat_window.is_visible_in_tree()):
+		return
+
+	# Si se hace click con cualquier botón del ratón fuera de la ventana de chat, deseleccionar el campo de texto
+	if event is InputEventMouseButton and event.pressed:
+		if line_edit and line_edit.has_focus():
+			var mb_event := event as InputEventMouseButton
+			var click_pos: Vector2 = mb_event.global_position
+			var rect: Rect2 = chat_window.get_global_rect()
+			if not rect.has_point(click_pos):
+				line_edit.release_focus()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if chat_window and chat_window.visible:
 			if event.keycode == KEY_ESCAPE:
-				close_command_bar()
+				if line_edit and line_edit.has_focus():
+					line_edit.release_focus()
+				else:
+					close_command_bar()
 				get_viewport().set_input_as_handled()
+			elif event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+				if line_edit and not line_edit.has_focus():
+					line_edit.grab_focus()
+					line_edit.caret_column = line_edit.text.length()
+					get_viewport().set_input_as_handled()
+			elif event.keycode == KEY_SLASH:
+				if line_edit and not line_edit.has_focus():
+					line_edit.text = "/"
+					line_edit.grab_focus()
+					line_edit.caret_column = 1
+					get_viewport().set_input_as_handled()
 		else:
 			if event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
-				open_command_bar()
+				open_command_bar("", false)
 				get_viewport().set_input_as_handled()
 			elif event.keycode == KEY_SLASH:
-				open_command_bar("/")
+				open_command_bar("/", true)
 				get_viewport().set_input_as_handled()
 
-## Abre la ventana de consola/chat y otorga foco al campo de texto.
-func open_command_bar(initial_text: String = "") -> void:
+## Abre la ventana de consola/chat.
+## Solo otorga foco de inmediato si se pasa initial_text o si grab_focus_on_open es true.
+## De lo contrario, permite que el chat esté abierto mientras el jugador camina y juega con normalidad.
+func open_command_bar(initial_text: String = "", grab_focus_on_open: bool = false) -> void:
 	if chat_window:
 		chat_window.visible = true
 	_history_index = -1
 	if line_edit:
 		line_edit.text = initial_text
-		line_edit.grab_focus()
-		line_edit.caret_column = line_edit.text.length()
+		if grab_focus_on_open or initial_text != "":
+			line_edit.grab_focus()
+			line_edit.caret_column = line_edit.text.length()
+		else:
+			line_edit.release_focus()
 
 ## Cierra la ventana de comandos y libera el foco de entrada hacia el juego.
 func close_command_bar() -> void:
@@ -74,9 +111,17 @@ func close_command_bar() -> void:
 		line_edit.text = ""
 		line_edit.release_focus()
 
+func _on_input_panel_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if line_edit:
+			line_edit.grab_focus()
+
 func _on_text_submitted(new_text: String) -> void:
 	var clean := new_text.strip_edges()
 	if clean.is_empty():
+		if line_edit:
+			line_edit.text = ""
+			line_edit.release_focus()
 		return
 
 	command_submitted.emit(clean)
@@ -91,10 +136,10 @@ func _on_text_submitted(new_text: String) -> void:
 	var color_tag := "[color=#88ff88]" if result.success else "[color=#ff6666]"
 	add_log_message("%s%s[/color]" % [color_tag, result.message])
 
-	# Limpiar campo de texto y mantener la consola abierta con el foco listo para el siguiente comando
+	# Limpiar campo de texto y liberar foco para permitir jugar y caminar de inmediato con el chat abierto
 	if line_edit:
 		line_edit.text = ""
-		line_edit.grab_focus()
+		line_edit.release_focus()
 
 ## Agrega un mensaje formateado al historial persistente del chat.
 func add_log_message(bbcode_text: String) -> void:
