@@ -26,6 +26,7 @@ const ProgressionControllerScript = preload("res://scripts/gameplay/progression/
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.8)
 var _was_forward_pressed: bool = false
 var _prev_global_pos: Vector3 = Vector3.ZERO
+var _was_attacking_anim: bool = false
 
 # Temporizadores y variables de Dash y Guardia Activa
 var _dash_timer: float = 0.0
@@ -505,12 +506,16 @@ func _process_movement(delta: float) -> void:
 
 	# Si está ejecutando activamente una animación de ataque (habilidad o golpe), frenar en seco para realizar el golpe
 	if visuals and visuals.is_playing_attack():
+		_was_attacking_anim = true
 		clear_click_move()
 		velocity.x = 0.0
 		velocity.z = 0.0
 		is_moving = false
 		move_and_slide()
 		return
+
+	var attack_just_finished := _was_attacking_anim
+	_was_attacking_anim = false
 
 	# Cancelar combate automático y click-to-move si el jugador presiona manualmente cualquier tecla de movimiento
 	var has_manual_input := (turn_input != 0.0 or forward_input != 0.0)
@@ -591,10 +596,11 @@ func _process_movement(delta: float) -> void:
 	_was_forward_pressed = forward_input > 0.0
 
 	if forward_input > 0.0:
-		# Al arrancar a caminar (W) sin click derecho, orientar al personaje hacia donde mira la cámara.
+		# Al caminar hacia adelante (W) sin click derecho y sin girar con A/D,
+		# o al retomar la marcha tras un ataque/habilidad, orientar al personaje hacia donde mira la cámara.
 		# Mientras ya esté caminando, si se pulsa click derecho para soltar la cámara,
 		# la cámara rota libremente y el personaje continúa caminando en su misma dirección.
-		if just_started_forward and camera_pivot and not camera_pivot.is_rmb_held:
+		if camera_pivot and (just_started_forward or attack_just_finished or (not camera_pivot.is_rmb_held and turn_input == 0.0)):
 			rotation.y = camera_pivot.current_yaw
 
 		var forward_dir := -transform.basis.z

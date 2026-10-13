@@ -63,6 +63,13 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	if caster_stats != null and mana_cost > 0:
 		caster_stats.current_mp = maxi(0, caster_stats.current_mp - mana_cost)
 
+	# Orientar al lanzador hacia el objetivo si es habilidad de objetivo individual
+	if not is_aoe and target != null and is_instance_valid(target) and target != caster:
+		var diff := target.global_position - caster.global_position
+		diff.y = 0.0
+		if diff.length_squared() > 0.001:
+			caster.rotation.y = atan2(-diff.x, -diff.z)
+
 	# Animación en el lanzador con velocidad basada en su velocidad actual de ataque
 	var visuals: Node = caster.get_node_or_null("Visuals")
 	if visuals and visuals.has_method("play_attack"):

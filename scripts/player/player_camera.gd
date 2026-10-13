@@ -103,11 +103,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				var was_orbiting := is_rmb_held
 				is_rmb_held = false
-				# Al soltar el click derecho tras orbitar manualmente la cámara caminando con W
+				# Al soltar el click derecho tras orbitar manualmente la cámara caminando con W, el jugador se orienta hacia la cámara
 				if was_orbiting:
 					var parent_node := get_parent() as Node3D
 					if parent_node and (Input.is_action_pressed("move_forward") or Input.is_key_pressed(KEY_W)):
-						snap_behind_player()
+						parent_node.rotation.y = current_yaw
 
 		# Zoom con la ruedita del mouse
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:

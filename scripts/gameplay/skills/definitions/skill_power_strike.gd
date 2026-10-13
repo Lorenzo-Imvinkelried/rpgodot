@@ -39,13 +39,11 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 		caster_stats.current_mp = maxi(0, caster_stats.current_mp - mana_cost)
 
 	# 2. Orientar al personaje hacia el objetivo si existe
-	var forward_dir := -caster.transform.basis.z
 	if target != null and is_instance_valid(target):
 		var diff := target.global_position - caster.global_position
 		diff.y = 0.0
 		if diff.length_squared() > 0.001:
-			forward_dir = diff.normalized()
-			caster.look_at(caster.global_position + forward_dir, Vector3.UP)
+			caster.rotation.y = atan2(-diff.x, -diff.z)
 
 	# 3. Calcular la velocidad de ataque acelerada con multiplicador 1.70x (PowerStrike.h)
 	var current_atk_spd: float = 1.4
