@@ -133,22 +133,30 @@ func _run_tests() -> void:
 	# Esperar a que la habilidad impacte y ejecute _apply_delayed_strike (0.58 / 1.70 = ~0.34s)
 	await create_timer(0.40).timeout
 
-	# Verificar que el autoataque fue preparado con ready_next_attack
-	assert(combat_ctrl._time_since_last_attack >= 100.0, "ready_next_attack debe haber preparado el timer de ataque inmediato (obtenido: %.1f)" % combat_ctrl._time_since_last_attack)
-	print("  [OK] ready_next_attack preparó el ataque inmediato tras el impacto de la habilidad.")
+	# Verificar que el autoataque NO sufre un salto forzado artificial (ready_next_attack = 999.0)
+	# sino que mantiene la cadencia fluida acumulando el tiempo real sin desfasar los siguientes autoataques
+	assert(combat_ctrl._time_since_last_attack < 10.0, "El temporizador de ataque no debe saltar artificialmente a 999.0 (obtenido: %.1f)" % combat_ctrl._time_since_last_attack)
+	print("  [OK] El temporizador de ataque mantiene cadencia homogénea tras el impacto de la habilidad.")
 
 	# Simular que termina la animación de la habilidad
 	visuals.is_attacking_anim = false
 	a_player.stop()
 
-	# Ejecutar update_combat en el frame inmediato
-	var attacks_executed_before := combat_ctrl._pending_impacts.size()
-	combat_ctrl.update_combat(0.016, visuals)
+	# Calcular intervalo esperado
+	var stats_p := combat_ctrl.get_stats()
+	var expected_interval := 1.0 / maxf(0.05, stats_p.attack_speed)
 
-	# Debe disparar inmediatamente el siguiente ataque básico
-	assert(combat_ctrl._pending_impacts.size() > attacks_executed_before, "El siguiente básico debe salir DE INMEDIATO al concluir la animación sin delay muerto")
-	assert(combat_ctrl._time_since_last_attack < 0.1, "_time_since_last_attack debe reiniciarse a 0 para seguir la cadencia de attack_speed")
-	print("  [OK] El siguiente ataque básico se disparó de inmediato con fluidez (juice) y retiene la velocidad de ataque actual.")
+	# Si aún no pasó el intervalo de ataque, update_combat no debe disparar prematuramente
+	combat_ctrl._time_since_last_attack = expected_interval * 0.5
+	combat_ctrl.update_combat(0.016, visuals)
+	assert(combat_ctrl._pending_impacts.is_empty(), "No debe disparar antes de cumplir el intervalo de ataque normal")
+
+	# Al alcanzar el intervalo de ataque normal, debe disparar con cadencia uniforme
+	combat_ctrl._time_since_last_attack = expected_interval
+	combat_ctrl.update_combat(0.016, visuals)
+	assert(not combat_ctrl._pending_impacts.is_empty(), "Debe disparar el auto-ataque al cumplir el intervalo de ataque normal")
+	assert(combat_ctrl._time_since_last_attack < 0.1, "_time_since_last_attack debe reiniciarse a 0 para el siguiente autoataque")
+	print("  [OK] Todos los autoataques subsiguientes se disparan a intervalos homogéneos y fluidos.")
 
 	# Limpieza
 	player.queue_free()
