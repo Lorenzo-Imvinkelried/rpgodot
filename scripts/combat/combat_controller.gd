@@ -439,17 +439,25 @@ func update_combat(delta: float, visuals: PlayerVisuals) -> void:
 			_face_target()
 
 			# Chequear cadencia de ataque según attack_speed y ralentizaciones activas
-			var atk_speed_mult: float = status_ctrl.get_attack_speed_multiplier() if (status_ctrl and status_ctrl.has_method("get_attack_speed_multiplier")) else 1.0
-			var current_stats := get_stats()
-			var base_atk_spd: float = current_stats.attack_speed if current_stats else 1.2
-			var atk_speed: float = base_atk_spd * atk_speed_mult
-			var attack_interval := 1.0 / maxf(0.05, atk_speed)
+			var attack_interval := get_current_attack_interval()
+			var atk_speed := 1.0 / attack_interval
 			if _time_since_last_attack >= attack_interval:
 				# Si todavía se está reproduciendo activamente un ataque previo o de habilidad, no solapar
 				if visuals and visuals.has_method("is_playing_attack") and visuals.is_playing_attack():
 					return
 				_time_since_last_attack = 0.0
 				_execute_attack(visuals, atk_speed)
+
+## Retorna el intervalo actual de ataque en segundos (1.0 / attacks_per_second), considerando stats y ralentizaciones.
+func get_current_attack_interval() -> float:
+	var status_ctrl: Node = null
+	if _parent_body:
+		status_ctrl = _parent_body.get_node_or_null("StatusEffectController")
+	var atk_speed_mult: float = status_ctrl.get_attack_speed_multiplier() if (status_ctrl and status_ctrl.has_method("get_attack_speed_multiplier")) else 1.0
+	var current_stats := get_stats()
+	var base_atk_spd: float = current_stats.attack_speed if current_stats else 1.2
+	var atk_speed: float = base_atk_spd * atk_speed_mult
+	return 1.0 / maxf(0.05, atk_speed)
 
 ## Cancela cualquier impacto pendiente del auto-ataque (Windup Cancel) y resetea temporizadores (AA-Reset).
 func cancel_pending_attack() -> void:
@@ -460,9 +468,9 @@ func cancel_pending_attack() -> void:
 func reset_attack_timer() -> void:
 	_time_since_last_attack = 0.0
 
-## Prepara el auto-ataque para ejecutarse inmediatamente (usado por buffs como Berserker)
+## Prepara el auto-ataque para ejecutarse inmediatamente (apenas concluya cualquier animación de ataque en curso)
 func ready_next_attack() -> void:
-	_time_since_last_attack = 999.0
+	_time_since_last_attack = maxf(_time_since_last_attack, get_current_attack_interval())
 
 func _face_target() -> void:
 	if _parent_body == null or not is_instance_valid(current_target):

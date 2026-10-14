@@ -23,10 +23,10 @@ func _init() -> void:
 
 	flat_damage = 30.0
 	damage_multiplier = 1.55 # 55% más de daño que el básico estándar
-	anim_speed_multiplier = 1.70 # Multiplicador exacto de 1.70x (70% más rápido que el básico según RPGARENA)
+	anim_speed_multiplier = 1.70 # Multiplicador de 1.70x para que esa única animación de skill salga más rápida
 	threat_multiplier = 1.6 # Mayor generación de amenaza
 
-## Ejecución con animación acelerada (1.70x), AA-Reset, Lunge procedural e impacto sincronizado
+## Ejecución con AA-Reset, animación acelerada (1.70x) e impacto sincronizado
 func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree: SceneTree = null) -> Dictionary:
 	if caster == null or not is_instance_valid(caster):
 		return { "success": false }
@@ -45,7 +45,7 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 		if diff.length_squared() > 0.001:
 			caster.rotation.y = atan2(-diff.x, -diff.z)
 
-	# 3. Calcular la velocidad de ataque acelerada con multiplicador 1.70x (PowerStrike.h)
+	# 3. Calcular la velocidad de ataque acelerada con multiplicador 1.70x para esa única animación
 	var current_atk_spd: float = 1.4
 	if caster_stats != null:
 		current_atk_spd = caster_stats.attack_speed
@@ -61,7 +61,7 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 	else:
 		base_anim_scale = current_atk_spd
 
-	# Escala de velocidad final acelerada un 70% más rápida que el golpe básico normal
+	# Escala de velocidad final acelerada un 70% más rápida que el golpe básico normal exclusivamente para esta animación
 	var skill_speed_scale: float = maxf(1.70, base_anim_scale * anim_speed_multiplier)
 
 	# 4. [ANIMATION CANCELLING & AA-RESET]: Reproducir animación de golpe de inmediato
@@ -85,9 +85,15 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 			elif combat_ctrl.has_method("reset_attack_timer"):
 				combat_ctrl.reset_attack_timer()
 
-			if "current_target" in combat_ctrl and combat_ctrl.current_target == null:
-				combat_ctrl.current_target = target
-			if "state" in combat_ctrl and combat_ctrl.state == CombatController.State.IDLE:
+			if combat_ctrl.has_method("ready_next_attack"):
+				combat_ctrl.ready_next_attack()
+
+			if "current_target" in combat_ctrl and (combat_ctrl.current_target == null or combat_ctrl.current_target != target):
+				if combat_ctrl.has_method("attack_target"):
+					combat_ctrl.attack_target(target)
+				else:
+					combat_ctrl.current_target = target
+			if "state" in combat_ctrl and combat_ctrl.state != CombatController.State.ATTACKING:
 				combat_ctrl.state = CombatController.State.ATTACKING
 
 		# 7. Sincronización del impacto con la caída acelerada de la espada
@@ -114,7 +120,7 @@ func _apply_delayed_strike(caster: Node3D, target: Node3D, caster_stats: Charact
 	var combat_ctrl: Node = caster.get_node_or_null("CombatController")
 	if combat_ctrl:
 		if "current_target" in combat_ctrl and combat_ctrl.current_target == target:
-			if "state" in combat_ctrl and combat_ctrl.state == CombatController.State.IDLE:
+			if "state" in combat_ctrl and combat_ctrl.state != CombatController.State.ATTACKING:
 				combat_ctrl.state = CombatController.State.ATTACKING
 
 	var target_ct := target.get_node_or_null("CombatTarget") as CombatTarget

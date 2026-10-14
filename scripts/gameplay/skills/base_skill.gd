@@ -86,7 +86,7 @@ func execute(caster: Node3D, target: Node3D, caster_stats: CharacterStats, tree:
 		else:
 			base_anim_scale = current_atk_spd
 
-		var final_speed_scale: float = maxf(1.5, base_anim_scale * anim_speed_multiplier)
+		var final_speed_scale: float = maxf(0.1, base_anim_scale * anim_speed_multiplier)
 		visuals.play_attack(final_speed_scale)
 
 	# Registro de estado de combate en el lanzador y sincronización de autoataque

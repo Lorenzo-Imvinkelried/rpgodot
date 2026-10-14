@@ -111,7 +111,7 @@ func _run_tests() -> void:
 	print("[OK] Prueba 2: Cancelación en Recovery (AA-Reset con combo fluido) verificada con éxito.")
 
 	# --------------------------------------------------------------------------
-	# PRUEBA 3: Multiplicador 1.70x en la definición de SkillPowerStrike
+	# PRUEBA 3: Multiplicador 1.70x para animación acelerada de SkillPowerStrike
 	# --------------------------------------------------------------------------
 	var p_strike := SkillPowerStrikeScript.new()
 	assert(absf(p_strike.anim_speed_multiplier - 1.70) < 0.01, "SkillPowerStrike debe tener exactamente multiplicador 1.70x (obtenido: %.2f)" % p_strike.anim_speed_multiplier)
